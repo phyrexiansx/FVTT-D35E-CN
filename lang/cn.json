@@ -1734,6 +1734,7 @@
  "D35E.AttackGeneralRangedBonus": "通用远程加值",
  "D35E.AttackItemBonus": "内置调整",
  "D35E.AttackAoO": "可进行借机攻击",
+ "D35E.Counterattack": "反击",
  "D35E.AoOAttack": "借机攻击",
  "D35E.AoOForcedLabel": "触发借机攻击",
  "D35E.AoOForcedNone": "没有符合条件的可借机角色",

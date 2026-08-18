@@ -6,6 +6,7 @@
 // 配置：系统统一（battleAnimDefault，4类默认+音效留白）+ 物品单独（item.system.battleAnim，覆盖默认）
 
 import { setWalkFacing } from "./walk-animation.js";
+import { fxBegin, fxEnd } from "./damageSound.js";
 
 const SETTING = { config: "battleAnimDefault" };
 const FRAME = 192; // 每格像素
@@ -89,8 +90,18 @@ export class BattleAnimConfig extends FormApplication {
 }
 
 /* ---------------- 工具 ---------------- */
-function _actorToken(actor) {
+// [D35E]多 Token 修正：解析"实际发起攻击的 Token"，避免 A 的 1 号攻击却闪 2 号
+// 优先级：调用方显式指定（item._animToken，批量攻击/反击/借机等）> 当前受控的同 actor Token（角色卡攻击）> actor.token（主 Token）> 兜底第一个
+function _actorToken(actor, item) {
   if (!canvas?.scene || !actor) return null;
+  if (item?._animToken) {
+    const t = canvas.tokens.get(item._animToken);
+    if (t) return t;
+  }
+  const controlled = canvas.tokens.controlled.find((t) => t.actor?.id === actor.id);
+  if (controlled) return controlled;
+  const main = actor.token ? canvas.tokens.get(actor.token.id) : null;
+  if (main) return main;
   return canvas.tokens.placeables.find((t) => t.actor === actor || t.actor?.id === actor.id) || null;
 }
 function _findTemplate() {
@@ -123,7 +134,7 @@ export function triggerBattleAnim(item, opts = {}) {
     const defs = game.settings.get("D35E", SETTING.config) || {};
     const img = String(cfg.img || defs[type] || "").trim();
     const sound = String(cfg.sound || defs[`${type}Sound`] || "").trim();
-    const from = _actorToken(actor);
+    const from = _actorToken(actor, item);
     let target = null;
     if (["melee", "ranged", "heal"].includes(type)) {
       // 优先使用结算前快照的目标（结算过程中 game.user.targets 可能已被清空）
@@ -288,28 +299,20 @@ function _shootArrow(from, target, onArrive) {
 }
 
 /* ---------------- 白光（使用者闪一瞬） ---------------- */
-// [修复] 连续使用能力时用 token 上保存的「首次原始滤镜」恢复（并在新闪光时重置计时），
-// 避免第二次把当时的白色滤镜当作原始值保存、恢复后残留 brightness 叠加（token 越来越亮）。
+// [修复-2026-08-18] 改用统一特效状态管理器（fxBegin/fxEnd，与 damageSound 染红/绿闪共享）：
+// 行动白闪与受击染红/受治疗绿闪几乎同时发生时，恢复总是回到 token 的真实基础滤镜，
+// 不再互相污染（旧实现各自保存首次滤镜，重叠时会把对方的白色滤镜当作原始值 → 永久变亮）。
 function _whiteFlash(token) {
   try {
     if (!token || token.destroyed || !token.mesh) return;
-    const mesh = token.mesh;
-    if (token._d35eWhiteOrig === undefined) {
-      token._d35eWhiteOrig = mesh.filters ? [...mesh.filters] : null;
-    }
+    const fx = fxBegin(token);
+    if (!fx) return;
     // 纹理滤镜染白（去饱和 + 提亮），与受击染红(tint)一致的"染纹理"方案
     const filter = new PIXI.ColorMatrixFilter();
     filter.saturate(0, true);
     filter.brightness(3, true);
-    mesh.filters = token._d35eWhiteOrig ? [...token._d35eWhiteOrig, filter] : [filter];
-    clearTimeout(token._d35eWhiteTimer);
-    token._d35eWhiteTimer = setTimeout(() => {
-      if (token && !token.destroyed && token.mesh) {
-        token.mesh.filters = token._d35eWhiteOrig ? [...token._d35eWhiteOrig] : null;
-      }
-      delete token._d35eWhiteOrig;
-      token._d35eWhiteTimer = null;
-    }, WHITE_MS);
+    token.mesh.filters = fx.baseFilters ? [...fx.baseFilters, filter] : [filter];
+    fxEnd(token, WHITE_MS);
   } catch (e) {}
 }
 
@@ -366,9 +369,9 @@ Hooks.on("createChatMessage", (message) => {
   if (message.user.id === game.user.id) return;
   if (game.user.isGM) setTimeout(() => message.delete().catch(() => {}), 1000);
   _playLocal(d);
-  if (d.actorId) {
-    const actor = game.actors.get(d.actorId);
-    const from = actor ? _actorToken(actor) : null;
+  // [D35E]多 Token 修正：白闪使用广播的 fromTokenId（发起者 Token 在发送端已按实际 token 解析）
+  if (d.fromTokenId) {
+    const from = canvas.tokens.get(d.fromTokenId);
     if (from) _whiteFlash(from);
   }
 });

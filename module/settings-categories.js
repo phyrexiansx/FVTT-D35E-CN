@@ -31,6 +31,7 @@ const CATEGORIES = {
     "additionalCachedCompendiums_damageTypes",
     "smoothKeyMove",
     "speedProviderSettings",
+    "batchAttackMenu",
     "cgmpAllowPlayersUseDesc", "cgmpNotifyTyping",
     "dtEnableTray", "dtEnableCalculator", "dtHideAdv", "dtEnableInline",
     "chatedit-allowEdit", "chatedit-showEdited", "chatedit-markdown", "chatedit-emoji",
@@ -47,6 +48,8 @@ const CATEGORIES = {
     // 受击特效
     "hitEffectEnabled",
     "healEffectEnabled",
+    // 锁定连线特效
+    "targetLinesEnabled",
     // 聊天肖像
     "borderShape", "useUserColorAsBorderColor", "borderColor", "borderWidth",
     "disableChatPortrait", "useTokenImage", "doNotUseTokenImageWithSpecificType",

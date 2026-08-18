@@ -1,0 +1,44 @@
+<form class="d35e-batch-attack">
+  <p style="margin:0 0 8px; opacity:0.85; font-size:13px;">
+    目标（<b>{{targetCount}}</b>）：{{targets}}<br/>
+    勾选要发起的攻击，每行可填<b>加值/减值</b>（如 +2 / -1）；每个 Token 旁可勾选<b>可选高级战斗行动</b>。
+    投掷顺序：一个角色的所有攻击投完后等 200ms 再投下一个角色。
+  </p>
+  {{#each tokens}}
+  <div class="batch-token" style="border:1px solid rgba(0,0,0,0.25); border-radius:4px; padding:6px 8px; margin-bottom:8px;">
+    <div class="batch-token-header" style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+      <img src="{{img}}" style="width:28px; height:28px; border:none; border-radius:3px;"/>
+      <h3 style="margin:0; flex:1; font-size:14px;">{{name}}</h3>
+      <span style="opacity:0.6; font-size:12px;">{{tokenName}}</span>
+    </div>
+    {{#if optionals.length}}
+    <div class="batch-optionals" style="margin-bottom:5px; font-size:12px; padding:3px 6px; background:rgba(0,0,0,0.06); border-radius:3px;">
+      <span style="font-weight:bold; margin-right:8px;">可选行动：</span>
+      {{#each optionals}}
+      <label style="margin-right:12px; white-space:nowrap; cursor:pointer;">
+        <input type="checkbox" name="optional-{{tokenId}}-{{id}}" checked/> {{name}}
+      </label>
+      {{/each}}
+    </div>
+    {{/if}}
+    {{#each attacks}}
+    <div class="batch-attack-row" style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+      <input type="checkbox" name="atk-{{tokenId}}-{{id}}" checked style="flex:0 0 auto;"/>
+      <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{name}}">{{name}}</span>
+      {{#if isFullAttack}}
+      <span style="font-size:11px; opacity:0.65; flex:0 0 auto;">（全力攻击）</span>
+      {{else}}
+      <input type="text" name="bonus-{{tokenId}}-{{id}}" value="" placeholder="加值/减值" style="width:88px; flex:0 0 auto; text-align:center;"/>
+      {{/if}}
+    </div>
+    {{/each}}
+    {{#unless attacks.length}}
+    <div style="opacity:0.5; font-size:12px;">（该 Token 没有可用的攻击）</div>
+    {{/unless}}
+  </div>
+  {{/each}}
+  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
+    <button type="button" class="d35e-batch-cancel">取消</button>
+    <button type="button" class="d35e-batch-start" style="background:#4a6b32; color:#fff; border:1px solid #3a5526;">对锁定目标发起攻击（{{targetCount}}）</button>
+  </div>
+</form>

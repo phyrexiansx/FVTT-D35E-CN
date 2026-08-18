@@ -1,0 +1,16 @@
+<form class="d35e-batch-macro">
+  <p style="margin:0 0 8px;">
+    为 GM 一键创建「批量攻击」宏。使用方式：
+  </p>
+  <ol style="margin:0 0 10px; padding-left:20px; font-size:13px; line-height:1.6;">
+    <li>框选多个 Token（<b>不要锁定目标时先锁定目标</b>——用 T 键或右键锁定一个或多个目标）；</li>
+    <li>执行宏「批量攻击」，窗口列出各 Token 的所有攻击（含归属、全力攻击、可选高级战斗行动）；</li>
+    <li>勾选要发起的攻击、填写加值/减值，点「对锁定目标发起攻击」；</li>
+    <li>攻击自动对 GM 锁定的目标投掷：一个角色的所有攻击投完后等 200ms 再投下一个角色（队列防卡顿）。</li>
+  </ol>
+  <p style="font-size:12px; opacity:0.8;">宏命令：<code style="background:rgba(0,0,0,0.15); padding:2px 6px; border-radius:3px;">{{command}}</code></p>
+  <div style="display:flex; justify-content:flex-end; gap:8px;">
+    <button type="button" class="d35e-batch-macro-close">关闭</button>
+    <button type="button" class="d35e-batch-macro-create" style="background:#4a6b32; color:#fff; border:1px solid #3a5526;">创建宏「批量攻击」{{#if exists}}（已存在，将覆盖）{{/if}}</button>
+  </div>
+</form>

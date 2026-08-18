@@ -2,7 +2,15 @@ import {CACHE} from "../../cache.js";
 import {ActorPF} from '../entity.js';
 import {createCustomChatMessage} from '../../chat.js';
 import {Roll35e} from '../../roll.js';
-import {targetAutoSettle} from '../../automation/intuitive.js';
+import {targetAutoSettle, actorHasIntuition} from '../../automation/intuitive.js';
+import {ItemUse} from '../../item/extensions/use.js';
+
+// [D35E] 反击：消息级去重（双聊天窗口对同一消息可能各结算一次，按 消息id|目标actor 去重）
+const _counterattackRecent = new Map();
+const _COUNTERATTACK_DEDUP_MS = 5000;
+// [D35E] 反击链防递归：触发后 2 秒窗口内不再触发（反击造成的伤害不会再次引发反击）
+let _counterattackBusyUntil = 0;
+const _COUNTERATTACK_BUSY_MS = 2000;
 
 export class ActorDamageHelper {
     /**
@@ -291,9 +299,127 @@ export class ActorDamageHelper {
                         "system.attributes.hp.value": Math.clamped(hp.value - (value - dt), -100, hp.max),
                     }, { hitSound: true }) //[D35E]受击音效：伤害结算标记（手动改血不播）
                 );
+                // [D35E] 反击：命中且实际造成伤害后，检查攻击来源（近战武器/近战法术攻击且未勾选「长触及」），
+                // 若本角色拥有带「反击」开关的攻击且未被「阻止自动结算」拦截 → 自动对来源使用
+                if (hit && (value > 0 || nonLethal > 0) && attackerId) {
+                    ActorDamageHelper.tryCounterattack(a, attackerId, attackerTokenId, ev?.currentTarget).catch((err) =>
+                        console.error("D35E | Counterattack failed", err)
+                    );
+                }
             }
         }
         return Promise.all(promises);
+    }
+
+    /**
+     * [D35E] 反击：受到伤害且命中后调用。
+     * 规则：来源为近战武器攻击(mwak)或近战法术攻击(msak)，且来源攻击未勾选「长触及」→
+     * 自动对来源使用本角色所有带「反击」开关的攻击（skipDialog 快速投掷，按单次攻击掷骰）。
+     * 若本角色开启「阻止自动结算」则不生效。
+     * @param {Actor} targetActor 受伤角色（拥有「反击」攻击的一方）
+     * @param {string} attackerId 攻击者 actor id（伤害按钮 data-attacker）
+     * @param {string|null} attackerTokenId 攻击者 token id（格式 sceneId.tokenId）
+     * @param {HTMLElement} button 伤害按钮 DOM（用于回溯来源攻击卡）
+     */
+    static async tryCounterattack(targetActor, attackerId, attackerTokenId, button) {
+        try {
+            if (!targetActor || !attackerId || !button) return;
+            if (Date.now() < _counterattackBusyUntil) return; // 反击链防递归
+            // 消息级去重：双聊天窗口对同一消息可能各结算一次，只触发一次
+            const msgEl = button.closest?.(".message");
+            const msgId = msgEl?.dataset?.messageId;
+            if (!msgId) return;
+            const dedupKey = `${msgId}|${targetActor.id}`;
+            const now = Date.now();
+            if (now - (_counterattackRecent.get(dedupKey) || 0) < _COUNTERATTACK_DEDUP_MS) return;
+            _counterattackRecent.set(dedupKey, now);
+            if (_counterattackRecent.size > 200) {
+                for (const [k, t] of _counterattackRecent) {
+                    if (now - t >= _COUNTERATTACK_DEDUP_MS) _counterattackRecent.delete(k);
+                }
+            }
+            // 回溯来源攻击卡（data-item-id = 来源攻击/法术物品 id）
+            const card = button.closest?.(".chat-card");
+            const itemId = card?.dataset?.itemId;
+            if (!itemId) return;
+            const attackerActor = game.actors.get(attackerId);
+            if (!attackerActor) return;
+            const sourceItem = attackerActor.items.get(itemId) || game.items.get(itemId);
+            if (!sourceItem) return;
+            // 仅近战武器攻击 / 近战法术攻击触发
+            if (!["mwak", "msak"].includes(getProperty(sourceItem.system, "actionType"))) return;
+            // 来源攻击勾选「长触及」→ 反击够不着，不触发（旧数据兜底：由武器生成攻击时带入的 rch）
+            if (getProperty(sourceItem.system, "longReach") === true) return;
+            if (getProperty(sourceItem.system, "originalWeaponProperties.rch") === true) return;
+            // 本角色开启「阻止自动结算」→ 不自动生效
+            if (actorHasIntuition(targetActor)) return;
+            // 本角色带「反击」开关的攻击（attack 类）
+            const counterItems = (targetActor.items || []).filter(
+                (i) => i.type === "attack" && i.system?.counterattack === true
+            );
+            if (!counterItems.length) return;
+            // [D35E]反击活动计数：全力攻击/批量攻击宏据此等待反击结算完成后再继续
+            //（从此刻起计入活动窗口，含 150ms 延迟与全部反击攻击的使用）
+            game.D35E = game.D35E || {};
+            game.D35E._counterattackActive = (game.D35E._counterattackActive || 0) + 1;
+            try {
+                // [D35E]反击延迟：先呈现受击视觉/音效（染红+晃动约400ms），反击停顿约150ms再发动；
+                // 去重键在此之前已占位，延迟期间同一伤害的重复调用不会重复触发
+                await new Promise((r) => setTimeout(r, 150));
+                // 定位来源 token（攻击卡 data-attackertoken = sceneId.tokenId）
+                const sourceToken = ActorDamageHelper._findAttackerToken(attackerTokenId, attackerActor);
+                if (!sourceToken) return;
+                // [D35E]锁定来源为目标前先清除当前锁定：GM 发起攻击时锁定的目标可能包含本角色，
+                // 若保留会令反击卡同时命中多个目标（角色被自己的反击误伤）；
+                // v11 updateTokenTargets 可能无返回 Promise，不能链 .catch
+                try {
+                    await game.user.updateTokenTargets([sourceToken.id]);
+                } catch (err) {
+                    /* 目标锁定失败不阻断反击 */
+                }
+                // [D35E]多 Token 修正：反击发起者（受伤者）Token 白闪锁定——取来源攻击卡 data-target 第一个
+                let selfTokenId = null;
+                try {
+                    const tgtEl = card?.querySelector?.("[data-target]");
+                    selfTokenId = tgtEl?.dataset?.target || null;
+                } catch (e2) {}
+                // 依次自动使用（标记 _pendingCounterattack：useAttack 注入 counterattack=1 且按单次攻击掷骰）
+                _counterattackBusyUntil = Date.now() + _COUNTERATTACK_BUSY_MS;
+                for (const item of counterItems) {
+                    item._pendingCounterattack = true;
+                    if (selfTokenId) item._animToken = selfTokenId;
+                    try {
+                        await new ItemUse(item).useAttack({ skipDialog: true });
+                    } finally {
+                        if (item._pendingCounterattack) delete item._pendingCounterattack;
+                    }
+                    await new Promise((r) => setTimeout(r, 180));
+                }
+                // 保持 busy 窗口至自然过期（防止反击造成的伤害再次触发反击）
+            } finally {
+                game.D35E._counterattackActive = Math.max(0, (game.D35E._counterattackActive || 0) - 1);
+            }
+        } catch (err) {
+            _counterattackBusyUntil = 0;
+            console.error("D35E | Counterattack failed", err);
+        }
+    }
+
+    /** [D35E] 根据攻击卡 token 标记（sceneId.tokenId）或攻击者 actor 定位来源 token */
+    static _findAttackerToken(attackerTokenId, attackerActor) {
+        if (attackerTokenId) {
+            const parts = String(attackerTokenId).split(".");
+            const tokenId = parts[parts.length - 1];
+            const sceneId = parts.length > 1 ? parts.slice(0, -1).join(".") : canvas.scene?.id;
+            if (sceneId && canvas.scene?.id && sceneId === canvas.scene.id) {
+                const t = canvas.tokens.get(tokenId);
+                if (t) return t;
+            }
+        }
+        if (attackerActor) {
+            return canvas.tokens?.placeables?.find((t) => t.actor && t.actor.id === attackerActor.id) || null;
+        }
+        return null;
     }
 
     static async applyRegeneration(damage, actor = null) {

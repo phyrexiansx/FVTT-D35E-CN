@@ -1,3 +1,25 @@
+// ==================== 反击结算等待（全力攻击/批量宏专用） ====================
+// 反击触发有 150ms 延迟 + 攻击卡结算（50ms 自动结算）——轮询 game.D35E._counterattackActive（actorDamageHelper
+// 在 tryCounterattack 确定发起反击时 +1、全部反击使用完成时 -1），并保持 350ms 稳定无活动才视为结算结束。
+async function _waitForCounterattackIdle(maxMs = 20000) {
+  const t0 = Date.now();
+  let quietSince = 0;
+  while (Date.now() - t0 < maxMs) {
+    const active = game.D35E?._counterattackActive || 0;
+    if (active === 0) {
+      if (!quietSince) quietSince = Date.now();
+      else if (Date.now() - quietSince >= 800) return true; // 稳定 800ms（反击卡结算含防御对抗骰，350ms 不够）
+    } else quietSince = 0;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return false;
+}
+// 注意：D35E.js 主模块会在 ready 时整体赋值 game.D35E（覆盖顶层挂载），必须等 ready 后再挂载
+Hooks.once("ready", () => {
+  game.D35E = game.D35E || {};
+  game.D35E.waitForCounterattackIdle = _waitForCounterattackIdle;
+});
+
 import { ItemCharges } from "./charges.js";
 import { getOriginalNameIfExists } from "../../lib.js";
 import { Roll35e } from "../../roll.js";
@@ -27,6 +49,15 @@ export class ItemUse {
   async use(tempActor, replacementId, ev, skipDialog, rollModeOverride, temporaryItem, skipChargeCheck) {
     // [D35E] 战斗动画：入口快照锁定目标（结算过程中 game.user.targets 可能被清空）
     if (!this._animTargets) this._animTargets = Array.from(game.user.targets);
+    // [D35E] 多 Token 修正：入口快照发起 Token（受控同 actor Token 优先；批量攻击/反击会显式设置 item._animToken，不覆盖）
+    if (!this.item._animToken) {
+      // 注意：此处不能用局部 actor 变量（其 let 声明在下方，TDZ 报错）；tempActor 场景由调用方显式设置 item._animToken 覆盖
+      const _at = this.item.actor;
+      if (_at) {
+        const _ctl = canvas?.tokens?.controlled?.find((t) => t.actor?.id === _at.id);
+        this.item._animToken = (_ctl || _at.token)?.id || null;
+      }
+    }
     let actor = this.item.actor;
     if (tempActor !== null) {
       actor = tempActor;
@@ -136,6 +167,8 @@ export class ItemUse {
       optionalFeatRanges = new Map(),
       enabledConditionals = [],
       props = [],
+      // [D35E] 批量攻击：窗口勾选的可选高级战斗行动（item._batchOptionalFeats）——本次投掷生效
+      batchOptionalFeats = this.item?._batchOptionalFeats || [],
       rollModifiers = [],
       extraText = "",
       ammoMaterial = null,
@@ -153,6 +186,9 @@ export class ItemUse {
       maximize: false,
       multiplier: 1,
     };
+    // [D35E] 批量攻击：合并窗口勾选的可选高级战斗行动（form 里的勾选优先追加，二者可共存）
+    if (batchOptionalFeats.length) optionalFeatIds.push(...batchOptionalFeats);
+
     // Get form data
     if (form) {
       const formData = this.extractFormData(
@@ -831,8 +867,9 @@ export class ItemUse {
           header: game.i18n.localize("D35E.RollModifiers"),
           value: rollModifiers,
         });
-      // [D35E]无对话框快速使用（skipDialog/右键）时不弹窗收集目标 → 以发起攻击时锁定的目标作为卡片目标（自动结算依赖 data-target）
-      if (selectedTargets.length === 0 && !form) {
+      // [D35E]目标回退：无对话框快速使用（skipDialog/右键）或对话框不含目标选择（如全力攻击自动投掷）时，
+      // 以发起攻击时锁定的目标作为卡片目标（否则攻击卡无 data-target，自动结算无法执行）
+      if (selectedTargets.length === 0 && (!form || !form.find('[name="target-ids"]').length)) {
         const lockedTargets = Array.from(game.user.targets);
         if (lockedTargets.length) selectedTargets = lockedTargets;
         else if (this._animTargets && this._animTargets.length) selectedTargets = this._animTargets;
@@ -1023,6 +1060,13 @@ export class ItemUse {
           seq++;
           // [D35E] 攻击间隔：180ms，保证每次攻击结算完再发起下一次（50ms 结算受击 + 50ms 豁免）
           await new Promise((r) => setTimeout(r, 180));
+          // [D35E] 等待反击结算：若目标触发反击（150ms 延迟 + 结算），等反击全部完成再投下一击
+          await _waitForCounterattackIdle();
+          // [D35E] 攻击者死亡则停止后续攻击（3.5 规则 -10 死亡）
+          if (faActor && faActor.system.attributes.hp.value <= -10) {
+            ui.notifications.warn(game.i18n.localize("D35E.FullAttack") + "：攻击者已死亡，停止后续攻击");
+            return;
+          }
         }
       }
       if (game.combats.active) {
@@ -1117,6 +1161,15 @@ export class ItemUse {
     if (tempActor !== null) {
       actor = tempActor;
     }
+    // [D35E] 多 Token 修正：入口快照发起 Token（受控同 actor Token 优先；批量攻击/反击会显式设置 item._animToken，不覆盖）
+    if (!this.item._animToken) {
+      // 注意：此处不能用局部 actor 变量（其 let 声明在下方，TDZ 报错）；tempActor 场景由调用方显式设置 item._animToken 覆盖
+      const _at = this.item.actor;
+      if (_at) {
+        const _ctl = canvas?.tokens?.controlled?.find((t) => t.actor?.id === _at.id);
+        this.item._animToken = (_ctl || _at.token)?.id || null;
+      }
+    }
     if (actor && !actor.isOwner) return ui.notifications.warn(game.i18n.localize("D35E.ErrorNoActorPermission"));
 
     const itemQuantity = getProperty(this.item.system, "quantity");
@@ -1147,6 +1200,17 @@ export class ItemUse {
       rollData.attackType = "AO attack";
       delete this.item._pendingAoO;
     }
+    // 反击标记（由反击触发逻辑设置）：注入 rollData 供 Combat Changes 条件词条判断，
+    // 同时使快速投掷路径按「单次攻击」掷骰（而非全力攻击序列）
+    // 条件写法示例：`"@attackType" == "Counterattack"` 或 `@counterattack == 1`
+    if (this.item?._pendingCounterattack) {
+      rollData.counterattack = 1;
+      rollData.attackType = "Counterattack";
+      delete this.item._pendingCounterattack;
+    }
+    // [D35E] 批量攻击：快速投掷路径也应用外部传入的检定加值/减值
+    //（faAttackBonus 原有参数只进攻击对话框，现同时注入 rollData，批量攻击窗口按行填写）
+    if (faAttackBonus != null) rollData.faAttackBonus = faAttackBonus;
     this.itemUpdateData = {};
     this.itemUpdateData._id = this.item._id;
     game.D35E.logger.log("Attack item update", this.itemUpdateData);
@@ -1161,7 +1225,7 @@ export class ItemUse {
     )
       return {
         wasRolled: true,
-        roll: this.rollAttack(true, null, temporaryItem, actor, rollData, skipChargeCheck),
+        roll: this.rollAttack(rollData.counterattack === 1 ? false : true, null, temporaryItem, actor, rollData, skipChargeCheck),
       };
 
     // Render modal dialog

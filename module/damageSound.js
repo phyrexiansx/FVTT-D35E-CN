@@ -132,6 +132,52 @@ Hooks.once("init", () => {
   });
 });
 
+// ==================== 统一特效状态管理器（染红/染绿/白闪共享） ====================
+// [修复-2026-08-18] 染红(tint)、绿闪(tint+filters)、白闪(filters) 三种特效以前各自保存「首次原始值」，
+// 触发太快（如行动白闪 + 受击染红几乎同时）时会互相把对方的临时染色当作原始值保存，
+// 恢复后残留 → token 被永久染色/永久变亮。
+// 现统一按 token 管理：
+//  - token._d35eFx = { baseTint, baseFilters, count }：base 为无任何特效时的真实基础值（首次快照，之后不再变）
+//  - 每个特效开始时 count++（并取消待恢复计时，避免提前恢复破坏进行中的特效），结束时 count--；
+//  - count 归零后延迟恢复基础值并清除（多个特效重叠时只恢复一次，且永远回到真实基础值，互不污染）
+export function fxBegin(token) {
+  try {
+    if (!token || token.destroyed || !token.mesh) return null;
+    clearTimeout(token._d35eFxTimer); // 新特效开始：取消待恢复（否则会提前恢复破坏进行中的特效）
+    if (!token._d35eFx) {
+      token._d35eFx = {
+        baseTint: token.mesh.tint ?? 0xffffff,
+        baseFilters: token.mesh.filters ? [...token.mesh.filters] : null,
+        count: 0,
+      };
+    }
+    token._d35eFx.count++;
+    return token._d35eFx;
+  } catch (e) {
+    return null;
+  }
+}
+export function fxEnd(token, delayMs) {
+  try {
+    const fx = token?._d35eFx;
+    if (!fx) return;
+    fx.count = Math.max(0, fx.count - 1);
+    if (fx.count === 0) {
+      clearTimeout(token._d35eFxTimer);
+      token._d35eFxTimer = setTimeout(() => {
+        const f = token._d35eFx;
+        // count 仍为 0 才恢复（期间若有新特效开始会先 clearTimeout 取消本次恢复）
+        if (f && f.count === 0 && !token.destroyed && token.mesh) {
+          token.mesh.tint = f.baseTint;
+          token.mesh.filters = f.baseFilters ? [...f.baseFilters] : null;
+        }
+        delete token._d35eFx;
+        token._d35eFxTimer = null;
+      }, delayMs || 0);
+    }
+  } catch (e) {}
+}
+
 // ==================== 受击特效（染红 + 晃动） ====================
 
 // 精确到受击 Token：tokenId 优先（unlinked 独立血量 token，仅受击的那个播特效）；
@@ -147,23 +193,15 @@ function _getHitTokens(actor, tokenId) {
 }
 
 // 染红：Token 纹理短暂染红后恢复。
-// [修复] 短时间多次受击时用 token 上保存的「首次原始色调」恢复（并在新受击时重置计时），
-// 避免第二次受击把当时的红色当作原始色调保存、恢复后残留红色。
+// [修复-2026-08-18] 改用统一特效状态管理器（fxBegin/fxEnd）：与白闪/绿闪重叠时
+// 恢复总是回到 token 的真实基础色调，不再互相污染（旧实现各自保存首次值，重叠时会残留染色）。
 function _flashRed(token) {
   try {
     if (!token || token.destroyed || !token.mesh) return;
-    if (token._d35eHitTint === undefined) {
-      token._d35eHitTint = token.mesh.tint ?? 0xffffff;
-    }
+    const fx = fxBegin(token);
+    if (!fx) return;
     token.mesh.tint = 0xff0000; // 染红 token 纹理（而非叠加红色方格）
-    clearTimeout(token._d35eHitTintTimer);
-    token._d35eHitTintTimer = setTimeout(() => {
-      if (token && !token.destroyed && token.mesh) {
-        token.mesh.tint = token._d35eHitTint ?? 0xffffff;
-      }
-      delete token._d35eHitTint;
-      token._d35eHitTintTimer = null;
-    }, HIT_EFFECT.flashDuration);
+    fxEnd(token, HIT_EFFECT.flashDuration);
   } catch (e) {
     console.error("D35E hit effect (flash):", e);
   }
@@ -208,19 +246,16 @@ function _playHitEffect(actor, tokenId) {
 // ==================== 受治疗特效（绿色染纹理 + 闪白光，不晃动） ====================
 
 // 受治疗特效（绿+白同时渐变亮起，同时恢复）。
-// [修复] 与染红同理：用 token 上保存的「首次原始色调/滤镜」恢复，避免连续治疗残留绿色。
+// [修复-2026-08-18] 与染红同理：统一特效状态管理器，恢复回到真实基础 tint/filters，
+// 连续治疗或与白闪/染红重叠时不再残留绿色/白色。
 function _flashGreen(token) {
   try {
     if (!token || token.destroyed || !token.mesh) return;
     const mesh = token.mesh;
-    if (token._d35eHealTint === undefined) {
-      token._d35eHealTint = mesh.tint ?? 0xffffff;
-    }
-    if (token._d35eHealFilters === undefined) {
-      token._d35eHealFilters = mesh.filters ? [...mesh.filters] : null;
-    }
-    const origTint = token._d35eHealTint;
-    const origFilters = token._d35eHealFilters;
+    const fx = fxBegin(token);
+    if (!fx) return;
+    const origTint = fx.baseTint;
+    const origFilters = fx.baseFilters;
     const fadeMs = 200; // 绿 tint 与白滤镜同时渐变时长
     const holdMs = 200; // 保持时长
     const tintRGB = (v) => ({ r: (v >> 16) & 0xff, g: (v >> 8) & 0xff, b: v & 0xff });
@@ -245,17 +280,8 @@ function _flashGreen(token) {
       // 白色淡入（同步）
       filter.alpha = t;
       if (t < 1) { requestAnimationFrame(tick); return; }
-      // 保持后同时恢复（新受治疗会 clearTimeout 重置计时，恢复总是回到首次保存的原始值）
-      clearTimeout(token._d35eHealTintTimer);
-      token._d35eHealTintTimer = setTimeout(() => {
-        if (!token.destroyed && token.mesh) {
-          token.mesh.tint = origTint;
-          token.mesh.filters = origFilters ? [...origFilters] : null;
-        }
-        delete token._d35eHealTint;
-        delete token._d35eHealFilters;
-        token._d35eHealTintTimer = null;
-      }, holdMs);
+      // 保持后统一恢复（fxEnd：重叠特效计数归零后才恢复基础值）
+      fxEnd(token, holdMs);
     };
     requestAnimationFrame(tick);
   } catch (e) {}

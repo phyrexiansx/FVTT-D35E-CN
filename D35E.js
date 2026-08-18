@@ -112,6 +112,8 @@ import './module/walk-animation.js'; //内置：RPG Maker MV 行走图模式（3
 import './module/token-key-move.js'; //内置：方向键平滑移动（系统设置开关，跳过键盘重复延迟）
 import './module/settings-categories.js'; //内置：设置面板分类（基础/功能/视觉/音效/杂项）
 import './module/battle-animation.js'; //内置：战斗动画系统（RPG Maker MV 帧动画：近战/远程/治疗/能力四类，物品卡+系统配置，whisper同步）
+import './module/target-lines.js'; //内置：锁定连线特效（目标连线：账号颜色、全员可见、向目标流动光效，系统设置-视觉分类开关）
+import './module/batch-attack.js'; //内置：批量攻击（GM 框选多 Token 勾选攻击与加值，对锁定目标批量投掷，角色间 200ms 队列；设置-功能-批量攻击宏 一键创建宏）
 import './module/monks-tokenbar/js/jquery.typeahead.min.js'; // monks-tokenbar 依赖（UMD→globalThis 适配）
 import './module/monks-tokenbar/monks-tokenbar.js'; // 内置 Monk's TokenBar（v11.14：D35E 原生适配，tokenbar 面板/锁定移动/群体检定/分配XP；socket 改用 socketlib registerSystem）
 

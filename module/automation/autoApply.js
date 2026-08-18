@@ -2,6 +2,7 @@ import { ItemActiveHelper } from "../item/helpers/itemActiveHelper.js";
 import { ItemCombatChangesHelper } from "../item/helpers/itemCombatChangesHelper.js";
 import { ActorDamageHelper } from "../actor/helpers/actorDamageHelper.js";
 import { actorHasIntuition, targetAutoSettle, targetAutoSettleSave, targetAutoSettleSR } from "./intuitive.js";
+import { createCustomChatMessage } from "../chat.js";
 
 export { actorHasIntuition, targetNeedsManual, targetAutoSettle } from "./intuitive.js";
 export { targetNeedsManualSave, targetAutoSettleSave } from "./intuitive.js";
@@ -111,6 +112,63 @@ function getDamageButtonForSave(saveBtn) {
   return block.find('[data-action="applyDamage"]').first();
 }
 
+/**
+ * [D35E]未命中结算提示：攻击类（带豁免等）自动结算未命中时生成一条「未命中!」结算卡，
+ * 复用 damage-description 模板（hit=false），让参与者知道发生了什么（修复：未命中被静默跳过）。
+ */
+async function notifyMiss(targetActor, attackTotal, card) {
+  try {
+    const attackerId = card.attr("data-actor-id");
+    const attacker = attackerId ? game.actors.get(attackerId) : null;
+    const chatData = {
+      speaker: ChatMessage.getSpeaker({ actor: targetActor }),
+      rollMode: "publicroll",
+      "flags.D35E.noRollRender": true,
+    };
+    const templateData = {
+      name: targetActor.name,
+      img: targetActor.img,
+      actor: targetActor,
+      roll: attackTotal,
+      hit: false,
+      achit: false,
+      crit: false,
+      damageData: {
+        damage: 0,
+        nonLethalDamage: 0,
+        displayDamage: 0,
+        isHealing: false,
+        beforeDamage: 0,
+        lower: false,
+        higher: false,
+        equal: true,
+        incorporealMiss: false,
+        incorporealRolled: false,
+      },
+      ac: {},
+      actions: [],
+      acModifiers: [],
+      concealMiss: false,
+      isSpell: false,
+      applyHalf: false,
+      ammoRecovered: false,
+      fortifyRolled: false,
+      fortifyValue: 0,
+      fortifyRoll: 0,
+      fortifySuccessfull: false,
+      hasProperties: false,
+      properties: [],
+      sourceName: attacker?.name || "Unknown",
+      sourceImg: attacker?.img || "systems/D35E/icons/special-abilities/imported.png",
+      type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+      rollMode: "publicroll",
+    };
+    await createCustomChatMessage("systems/D35E/templates/chat/damage-description.html", templateData, chatData);
+  } catch (err) {
+    /* 静默 */
+  }
+}
+
 /**逐目标应用伤害（复用伤害按钮数据；half=true 走减半结算；actor 为结算对象：token.actor，unlinked 时写各 token 独立数据） */
 async function applyDamageToTarget(actor, damageBtn, { half = false, hpBase = undefined } = {}) {
   if (!damageBtn || !damageBtn.length) return;
@@ -202,7 +260,11 @@ async function settleWithSave(card, saveBtn, srBtn, targets) {
     if (hasAttackTotal) {
       //攻击类（mwak/rwak/msak/rsak）：不论是否有豁免效果，先进行 AC 对抗 +伤害检定
       //1) AC 命中门：未命中 →不伤害、不豁免
-      if (!isAttackHit(attackTotal, { actor: a }, touch, natural20, fumble)) continue;
+      if (!isAttackHit(attackTotal, { actor: a }, touch, natural20, fumble)) {
+        // [D35E]未命中也输出一条结算提示（让参与者知道发生了什么，而不是静默跳过）
+        await notifyMiss(a, attackTotal, card);
+        continue;
+      }
       //2) 伤害检定：命中 →应用全伤（豁免结果不再影响伤害）
       await applyDamageToTarget(a, damageBtn, { half: false, hpBase: base.v });
       //无害：跳过法抗与豁免（豁免按钮存在但标记无害）

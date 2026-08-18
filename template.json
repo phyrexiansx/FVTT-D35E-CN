@@ -2354,6 +2354,8 @@
       "favorite": true,
       "thrown": false,
       "returning": false,
+      "longReach": false,
+      "counterattack": false,
       "magic": false,
       "epic": false,
       "alignment": {

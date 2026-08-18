@@ -1190,6 +1190,7 @@ export class ActorPF extends Actor {
     attackData['system.nonLethal'] = item.system.properties.nnl;
     attackData['system.thrown'] = item.system.properties.thr;
     attackData['system.returning'] = item.system.properties.ret;
+    attackData['system.longReach'] = item.system.properties.rch || false; //[D35E]反击判定：由武器生成攻击时自动带入「长触及」
 
     // Add additional attacks
     let extraAttacks = [];
