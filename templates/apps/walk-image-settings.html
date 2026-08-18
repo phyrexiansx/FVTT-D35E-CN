@@ -1,0 +1,92 @@
+<form class="d35e walk-image-settings">
+  <div class="form-group">
+    <label>行走图文件</label>
+    <div class="form-fields">
+      <input type="text" name="walkImage" value="{{walkImage}}" placeholder="不设置则使用普通 Token 图标"/>
+      <button type="button" class="file-picker" data-type="image" data-target="walkImage" title="选择文件">
+        <i class="fas fa-file-import"></i>
+      </button>
+    </div>
+    <p class="hint">
+      RPG Maker MV 行走图（3列×4行：第1行下 / 第2行左 / 第3行右 / 第4行上）。
+      移动时按方向播放 12321 帧乒乓，停止后回退到该方向的中间第2帧。
+      不设置则行走图模式不启用（使用现有 Token 图标）。
+    </p>
+  </div>
+  <div class="form-group">
+    <label>行走图缩放</label>
+    <div class="form-fields">
+      <input type="number" name="walkImageScale" value="{{walkImageScale}}" min="0.1" max="5" step="0.05"/>
+    </div>
+    <p class="hint">
+      默认 1（填满 Token 网格）。调小则行走图缩小，调大则放大（仅视觉，不影响实际占格）。
+    </p>
+  </div>
+  <div class="form-group">
+    <label>异常行走图（状态）</label>
+    <div class="form-fields">
+      <input type="text" name="walkConditionImg" value="{{walkConditionImg}}" placeholder="不设置则状态时沿用正常行走图"/>
+      <button type="button" class="file-picker" data-type="image" data-target="walkConditionImg" title="选择文件">
+        <i class="fas fa-file-import"></i>
+      </button>
+    </div>
+    <p class="hint">
+      陷入状态（角色卡状态页）时显示的行走图（格式同正常行走图）。移动时恢复正常行走图，停下切回。
+    </p>
+  </div>
+  <div class="form-group">
+    <label>受击图片</label>
+    <div class="form-fields">
+      <input type="text" name="walkHitImg" value="{{walkHitImg}}" placeholder="不设置则受击时不切换"/>
+      <button type="button" class="file-picker" data-type="image" data-target="walkHitImg" title="选择文件">
+        <i class="fas fa-file-import"></i>
+      </button>
+    </div>
+    <p class="hint">
+      受击瞬间切换为此图片（整图铺满 Token），与受击音效/染红特效同一时机，约 0.4 秒后自动恢复（有状态则恢复为异常行走图）。
+    </p>
+  </div>
+  <details class="walk-cond-config" style="margin: 8px 0; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 6px 8px;">
+    <summary style="cursor: pointer; color: #bbb;"><i class="fas fa-biohazard"></i> 状态行走图配置（每状态单独设置，优先级高者优先显示）</summary>
+    <div class="walk-cond-list" style="margin-top: 6px; max-height: 320px; overflow-y: auto;">
+      {{#each conditions}}
+      <div class="flexrow" style="align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <label style="flex: 0 0 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{label}}">{{label}}</label>
+        <div class="form-fields" style="flex: 1;">
+          <input type="text" name="walkConditionCfg.{{key}}.img" value="{{img}}" placeholder="不设置则忽略该状态"/>
+          <button type="button" class="file-picker" data-type="image" data-target="walkConditionCfg.{{key}}.img" title="选择文件">
+            <i class="fas fa-file-import"></i>
+          </button>
+        </div>
+        <label style="flex: 0 0 96px; display: flex; align-items: center; gap: 4px;">
+          <span style="color: #aaa; font-size: 12px;">优先级</span>
+          <input type="number" name="walkConditionCfg.{{key}}.priority" value="{{priority}}" min="-100" max="100" step="1" style="width: 60px;"/>
+        </label>
+      </div>
+      {{/each}}
+    </div>
+    <p class="hint" style="margin-top: 4px;">
+      多状态并存时优先级最高的显示；全部未配置时回退到上方「异常行走图」。
+      全局统一配置的「死亡」状态行走图（系统设置中）在角色未单独配置时生效。
+    </p>
+  </details>
+  <div class="form-group">
+    <label>图像偏移</label>
+    <div class="form-fields">
+      <input type="number" name="walkImageOffsetX" value="{{walkImageOffsetX}}" placeholder="X" step="1"/>
+      <span style="line-height: 24px; color: #999;">×</span>
+      <input type="number" name="walkImageOffsetY" value="{{walkImageOffsetY}}" placeholder="Y" step="1"/>
+      <span style="line-height: 24px; color: #999;">像素</span>
+    </div>
+    <p class="hint">
+      微调行走图在 Token 上的位置（单位：场景像素，正 X 向右、正 Y 向下）。例如 +0/-10 让角色视觉上移半格。
+    </p>
+  </div>
+  {{#if walkImage}}
+  <div class="form-group">
+    <label>预览</label>
+    <img src="{{walkImage}}" style="max-height: 160px; border: 1px solid #444; background: rgba(0,0,0,0.5);"/>
+  </div>
+  {{/if}}
+  <button type="submit"><i class="fas fa-check"></i> 保存</button>
+</form>

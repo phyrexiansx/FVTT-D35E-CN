@@ -1,0 +1,17 @@
+<form class="d35e-immediate-prompt">
+  <div style="padding:6px 4px 8px;font-size:12px;opacity:0.8;">{{actorName}}：你有可用的直觉动作，点击以下能力以使用，将消耗下回合的迅捷动作。</div>
+  <div class="d35e-ia-list" style="max-height:55vh;overflow-y:auto;">
+    {{#each items}}
+    <div class="d35e-ia-row" data-item-id="{{id}}" style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid rgba(0,0,0,0.12);cursor:pointer;">
+      <img src="{{img}}" style="width:28px;height:28px;border:none;flex:0 0 28px;object-fit:contain;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{name}}</div>
+        <div style="font-size:11px;opacity:0.75;">{{usesText}}</div>
+      </div>
+      <i class="fas fa-play" style="opacity:0.6;"></i>
+    </div>
+    {{else}}
+    <div style="padding:10px;opacity:0.7;">没有可用的直觉动作</div>
+    {{/each}}
+  </div>
+</form>

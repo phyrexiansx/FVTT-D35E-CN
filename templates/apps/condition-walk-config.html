@@ -1,0 +1,25 @@
+<form class="d35e condition-walk-config">
+  <p class="hint" style="margin: 0 0 8px 0;">
+    全局统一配置「死亡」状态的异常行走图（RPG Maker MV 3×4 格式）。
+    角色死亡（状态页「死亡」勾选）且角色未单独配置死亡行走图时生效。
+    其余状态由各角色在角色卡「行走图设置」窗口中独立配置。
+  </p>
+  <div class="condition-walk-list">
+    {{#each conditions}}
+    <div class="flexrow condition-walk-row" data-key="{{key}}" style="align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <label class="condition-walk-name" style="flex: 0 0 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{label}}">{{label}}</label>
+      <div class="form-fields" style="flex: 1;">
+        <input type="text" name="img_{{key}}" value="{{img}}" placeholder="不设置则角色死亡时沿用其行走图设置"/>
+        <button type="button" class="file-picker" data-type="image" data-target="img_{{key}}" title="选择文件">
+          <i class="fas fa-file-import"></i>
+        </button>
+      </div>
+      <label style="flex: 0 0 100px; display: flex; align-items: center; gap: 4px;">
+        <span style="color: #aaa; font-size: 12px;">优先级</span>
+        <input type="number" name="priority_{{key}}" value="{{priority}}" min="-100" max="100" step="1" style="width: 64px;"/>
+      </label>
+    </div>
+    {{/each}}
+  </div>
+  <button type="submit" style="margin-top: 10px;"><i class="fas fa-check"></i> 保存</button>
+</form>

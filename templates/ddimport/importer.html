@@ -1,0 +1,107 @@
+<form>
+  <div class="form-group import">
+    <label class="import-options">场景名称</label><input type='text' name="sceneName" />
+  </div>
+  <div class="form-group import" title="选择图片上传位置。">
+    <label class="import-options">存储类型</label>
+    <select name="source" class="source-selector">
+      {{#select defaultSource}}
+      {{#each dataSources as |label key|}}
+      <option value="{{key}}">{{label}}</option>
+      {{/each}}
+      {{/select}}
+    </select>
+  </div>
+  <div class="form-group import convert-section" title="转成 WebP 可大幅减小体积，但生成时间稍长">
+    <label class="import-options">转换为 WebP <i class="far fa-question-circle"></i></label>
+    <input type="checkbox" name="convert-to-webp" {{#if webpConversion}}checked{{/if}}>
+  </div>
+
+  <div class="form-group import convert-section" title="可在导入时设置自定义网格 PPI，改变生成图片的分辨率">
+    <label class="import-options">自定义网格 PPI <i class="far fa-question-circle"></i></label>
+    <input type="checkbox" class="use-custom-gridPPI" name="use-custom-gridPPI" {{#if useCustomPixelsPerGrid}}checked{{/if}}>
+    <div class="custom-gridPPI-section" name="custom-gridPPI-section" style="display: none">
+      <label class="import-options">自定义网格 PPI（50 到 256 之间）</label>
+      <input class="customGridPPIInput" type='number' name="customGridPPI" value="{{defaultCustomPixelsPerGrid}}" min="50" max="256" />
+    </div>
+  </div>
+
+  <div class="form-group import" title="图片上传的位置，路径相对于 User Data 文件夹。例如 worlds/你的世界/maps">
+    <label class="import-options">上传路径 <i class="far fa-question-circle"></i></label>
+    {{filePicker type="folder" target="path"}}
+    <input class= "path-input" type='text' name="path" value="{{this.path}}" />
+  </div>
+
+  <div class="warning path notification error" style="display: none">
+    路径应相对于 User Data 文件夹，例如 worlds/你的世界/maps，留空则放入 Data 文件夹。
+  </div>
+
+  <div class="form-group import">
+    <label class="import-options"
+      title="细节度决定跳过多少洞穴墙——右侧为高细节，不跳过墙">细节度 <i class="far fa-question-circle"></i></label>
+    <input class="fidelity-input" type="range" min="1" max="6" value="1" name="fidelity">
+  </div>
+  <div class="warning fidelity notification error" style="display: none">
+    高细节会生成非常多的洞穴墙，建议保持最低值。
+  </div>
+
+  <div class="form-group" title="包含阻挡视线的物体的墙体">
+    <label class="import-options">物体墙体 <i class="far fa-question-circle"></i></label>
+    <input type="checkbox" name="object-walls" checked>
+  </div>
+
+  <div class="form-group import">
+    <label class="import-options">内边距</label>
+    <div style="display:flex">
+    <input class="padding-input" type="range" min="0" max="0.5" value="{{padding}}" step="0.05" name="padding">
+    <span class="range-value">0</span>
+  </div>
+  </div>
+
+  <div class="form-group import">
+    <label class="import-options">上传 Universal VTT 文件（.dd2vtt / .df2vtt / .uvtt）</label>
+  </div>
+  <div class="form-group import" id="dd-upload-files" style="flex-direction: column";>
+    <button type="button" class="add-file">添加另一个文件</button>
+
+    <input class="file-input" type='file' name='file0' accept=".dd2vtt,.df2vtt,.uvtt" />
+    <input class="hidden-input" type='hidden' value="1" name="filecount" />
+    <div class="multi-mode-section" style="display: none">
+      <label class="import-options">为单个文件添加外围墙体</label>
+      <input type="checkbox" name="walls-around-files" {{#if wallsAroundFiles}}checked{{/if}}>
+      <br />
+      <label class="import-options">拼接方式</label>
+      <select name="multi-mode">
+        {{#select multiImageMode}}
+        {{#each multiImageModes as |label key|}}
+        <option value="{{key}}">{{label}}</option>
+        {{/each}}
+        {{/select}}
+      </select><br />
+      <label class="import-options">图片文件名（留空时同时作为场景名）</label><input type='text' name="imageFileName" />
+    </div>
+  </div>
+  <div>
+    <hr />
+    <h3>高级选项：</h3>
+    <div class="form-group import">
+      <label class="import-options" title="将墙体从边缘推开。如有问题请保持 0。">偏移量 <i class="far fa-question-circle"></i></label>
+      <input type="number" min="-3" step="0.1" max="3" value="{{offset}}" name="offset">
+    </div>
+    <div class="s3-section" style="display: none">
+      <div class="form-group import">
+        <label class="import-options">S3 存储的桶名称</label>
+        <select name="bucket">
+          {{#select s3Bucket}}
+            <option value=""></option>
+            {{#each bucketOptions}}
+            <option value="{{this}}">{{this}}</option>
+            {{/each}}
+          {{/select}}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="import-map">导入</button>
+</form>

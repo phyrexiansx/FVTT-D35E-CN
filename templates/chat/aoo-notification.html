@@ -1,0 +1,23 @@
+<div class="D35E chat-card item-card">
+  <header class="card-header flexrow">
+    {{#if moverImg}}<img src="{{moverImg}}" title="{{moverName}}" width="36" height="36" class="aoo-token-img"/>{{/if}}
+    <div class="flexcol">
+      <h3>{{localize "D35E.AttackOfOpportunity"}}</h3>
+      <h4 class="aoo-subtitle">{{moverName}} {{localize "D35E.AoOLeavingThreatened"}}</h4>
+    </div>
+  </header>
+  <div class="card-content">
+    <p class="aoo-may-make">{{localize "D35E.AoOMayMake"}}</p>
+    {{#each threateningTokens}}
+    <div class="flexrow aoo-threatener" data-token-id="{{id}}">
+      {{#if img}}<img src="{{img}}" title="{{name}}" width="30" height="30" class="aoo-token-img"/>{{/if}}
+      <span class="aoo-name">{{name}}</span>
+      {{#if hasAoo}}
+      <span class="aoo-count aoo-count-available"><i class="fas fa-surprise"></i> {{aooLeft}}/{{aooMax}}</span>
+      {{else}}
+      <span class="aoo-count aoo-count-exhausted"><i class="fas fa-ban"></i></span>
+      {{/if}}
+    </div>
+    {{/each}}
+  </div>
+</div>

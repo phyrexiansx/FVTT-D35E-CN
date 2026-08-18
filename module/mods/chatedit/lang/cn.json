@@ -1,0 +1,41 @@
+{
+  "CHATEDIT": {
+    "EDITS": {
+      "Alias": "发言名",
+      "Clear": "清理",
+      "Edit": "编辑聊天",
+      "Flag": "(被编辑)",
+      "IC": "改为角色发言",
+      "NotAllowed": "无法编辑此聊天。",
+      "OOC": "改为账号发言",
+      "Edited": "编辑聊天",
+      "Speaker": "发言人",
+      "Title": "编辑聊天"
+    },
+    "SETTINGS": {
+      "AllowEdit": {
+        "Name": "允许编辑",
+        "Hint": "允许聊天编辑 (右键该聊天)."
+      },
+      "AppV2": {
+        "Name": "启用ApplicationV2",
+        "Hint": "Use the ApplicationV2 editor with native darkmode support."
+      },
+      "Emoji": {
+        "Name": "允许表情",
+        "Hint": "允许发一些小表情包."
+      },
+      "Markdown": {
+        "Name": "Markdown样式",
+        "Hint": "启用mardown样式聊天"
+      },
+      "ShowEdited": {
+        "Icon": "显示图标",
+        "Message": "显示聊天",
+        "None": "不显示",
+        "Name": "显示编辑聊天",
+        "Hint": "在编辑过的聊天右上角显示一个小图标."
+      }
+    }
+  }
+}

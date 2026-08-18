@@ -1,0 +1,60 @@
+<form class="d35e battle-anim-config">
+  <p class="hint" style="margin: 0 8px 8px;">四类效果的默认动画文件（RPG Maker MV 动画图：192×192 格、每行最多5格、从左到右播完整行、每帧200ms）。近战/治疗/能力音效在动画开始时播放，远程音效在光箭命中时播放。物品可在各自物品卡上单独覆盖动画文件。</p>
+  <div class="form-group">
+    <label>近战（melee）</label>
+    <div class="form-fields">
+      <input type="text" name="melee" value="{{melee}}" placeholder="systems/D35E/animations/mele.png"/>
+      <button type="button" class="file-picker" data-type="image" data-target="melee" title="选择文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>近战音效</label>
+    <div class="form-fields">
+      <input type="text" name="meleeSound" value="{{meleeSound}}" placeholder="systems/D35E/se/xxx.ogg（留空=不播放）"/>
+      <button type="button" class="file-picker" data-type="audio" data-target="meleeSound" title="选择音效文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>远程（ranged）</label>
+    <div class="form-fields">
+      <input type="text" name="ranged" value="{{ranged}}" placeholder="systems/D35E/animations/shot.png"/>
+      <button type="button" class="file-picker" data-type="image" data-target="ranged" title="选择文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>远程音效</label>
+    <div class="form-fields">
+      <input type="text" name="rangedSound" value="{{rangedSound}}" placeholder="systems/D35E/se/xxx.ogg（留空=不播放）"/>
+      <button type="button" class="file-picker" data-type="audio" data-target="rangedSound" title="选择音效文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>治疗（heal）</label>
+    <div class="form-fields">
+      <input type="text" name="heal" value="{{heal}}" placeholder="治疗动画文件（留空=不播）"/>
+      <button type="button" class="file-picker" data-type="image" data-target="heal" title="选择文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>治疗音效</label>
+    <div class="form-fields">
+      <input type="text" name="healSound" value="{{healSound}}" placeholder="systems/D35E/se/xxx.ogg（留空=不播放）"/>
+      <button type="button" class="file-picker" data-type="audio" data-target="healSound" title="选择音效文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>能力（ability）</label>
+    <div class="form-fields">
+      <input type="text" name="ability" value="{{ability}}" placeholder="能力动画文件（留空=不播）"/>
+      <button type="button" class="file-picker" data-type="image" data-target="ability" title="选择文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>能力音效</label>
+    <div class="form-fields">
+      <input type="text" name="abilitySound" value="{{abilitySound}}" placeholder="systems/D35E/se/xxx.ogg（留空=不播放）"/>
+      <button type="button" class="file-picker" data-type="audio" data-target="abilitySound" title="选择音效文件"><i class="fas fa-file-import"></i></button>
+    </div>
+  </div>
+  <button type="submit" style="margin-top: 10px;"><i class="fas fa-check"></i>保存</button>
+</form>

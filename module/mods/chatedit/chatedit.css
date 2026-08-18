@@ -1,0 +1,166 @@
+/* ============================================================
+ * chatedit（合并进 D35E 系统）——皮肤适配
+ * 与系统 d35ecustom 皮肤保持一致：浅色纹理背景 + 深色文字
+ * ============================================================ */
+
+.chatedit.edit-form-v2 {
+
+  max-height: 830px;
+  --header-height: 32px;
+
+  & h5 {
+    font-size: var(--font-size-18);
+    margin: 0.4rem 0 .05rem;
+  }
+
+  & .standard-form {
+    gap: .25rem;
+    width: auto;
+
+    .form-group {
+      gap: 0.1em;
+    }
+  }
+
+  & .alias-row {
+    display: flex;
+
+    & input {
+      height: 1.8rem;
+    }
+
+    & button {
+      width: 80px;
+      margin-left: .4em;
+      height: 1.8rem;
+    }
+  }
+
+  & .window-content {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  & textarea {
+    flex: 1 1 auto;
+    height: 620px;
+    resize: none;
+    font-family: var(--font-primary);
+    font-size: var(--font-size-14);
+    --color-shadow-primary: rgba(0, 0, 0, 0.1);
+    color: #191813;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid #7a7971;
+  }
+
+  & .form-footer {
+    gap: .3rem;
+  }
+
+  & .actions {
+    display: flex;
+    flex-direction: row;
+    margin-top: auto;
+    margin-bottom: 5px;
+    flex: 1 0;
+
+    & button {
+      height: 2rem;
+    }
+  }
+}
+
+.chatedit.edit-form {
+
+  max-height: 830px;
+  display: flex;
+  flex-direction: column;
+
+  & .alias-row {
+    display: flex;
+
+    & button {
+      flex: 0 0 auto;
+      width: 5.5rem;
+      margin-left: .4em;
+      height: 32px;
+    }
+  }
+
+  & textarea {
+    flex: 1 1 auto;
+    resize: none;
+    font-family: var(--font-primary);
+    font-size: var(--font-size-14);
+    --color-shadow-primary: rgba(0, 0, 0, 0.1);
+    color: #191813;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid #7a7971;
+  }
+
+  & h3,
+  & .actions {
+    display: flex;
+    flex-direction: row;
+    flex: 0 0 auto;
+  }
+}
+
+/* ============================================================
+ * 系统皮肤（d35ecustom）下的窗口主题：同样的纹理 + 深色字色
+ * ============================================================ */
+body.d35ecustom .window-app.chatedit .window-content {
+  background: linear-gradient(rgba(255, 255, 255, 0.3) 100%, rgba(255, 255, 255, 0.3) 100%), url("../../../icons/ui/parchment-2.png") repeat;
+  color: #191813;
+}
+
+body.d35ecustom .window-app.chatedit h1,
+body.d35ecustom .window-app.chatedit h2,
+body.d35ecustom .window-app.chatedit h3,
+body.d35ecustom .window-app.chatedit h4,
+body.d35ecustom .window-app.chatedit h5 {
+  color: #191813;
+  border: none;
+}
+
+body.d35ecustom .window-app.chatedit select,
+body.d35ecustom .window-app.chatedit input[type="text"] {
+  color: #191813;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid #7a7971;
+}
+
+body.d35ecustom .window-app.chatedit textarea {
+  color: #191813;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid #7a7971;
+}
+
+body.d35ecustom .window-app.chatedit button {
+  color: white;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #000;
+}
+
+#context-menu [data-group-id="chatedit"]:has(li) {
+  position: relative;
+  margin-block-start: 0.5rem;
+}
+
+#context-menu [data-group-id="chatedit"]:has(li)::before {
+  content: "";
+  position: absolute;
+  inset-inline: 1rem;
+  inset-block-start: -0.25rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.message:is(.emote, .ic, .ooc) * {
+  user-select: text;
+  -webkit-user-select: text;
+}

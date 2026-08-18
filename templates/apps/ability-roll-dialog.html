@@ -1,0 +1,25 @@
+<form>
+    <div class="form-group">
+        <label>{{localize "D35E.Formula"}}</label>
+        <input type="text" name="formula" value="{{formula}}" disabled/>
+    </div>
+    <div class="form-group">
+        <label style="margin-right: 8px;"><input type="radio" name="adv-mode" value="normal" checked/> 普通</label>
+        <label style="margin-right: 8px;"><input type="radio" name="adv-mode" value="advantage"/> 优势</label>
+        <label style="margin-right: 8px;"><input type="radio" name="adv-mode" value="disadvantage"/> 劣势</label>
+    </div>
+    <div class="form-group">
+        <label>{{localize "D35E.SituationalBonus"}}</label>
+        <input type="text" name="bonus" value="" placeholder="e.g. +1d4"/>
+    </div>
+    <div class="form-group">
+        <label>{{localize "D35E.RollMode"}}</label>
+        <select name="rollMode">
+            {{#select rollMode}}
+            {{#each rollModes as |label mode|}}
+            <option value="{{mode}}">{{localize label}}</option>
+            {{/each}}
+            {{/select}}
+        </select>
+    </div>
+</form>

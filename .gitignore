@@ -1,0 +1,21 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 本地开发文件 / 个人记录
+CLAUDE.md
+D35E-会话总结-*.md
+D35E项目-*.md
+D35E-触发借机攻击.js
+_SPEC_autoapply.md
+_backup_intuitive.ps1
+_copy_backup.js
+system.json.temp
+template - 副本.json
+
+# 系统 / 临时文件
+*.DS_Store
+Thumbs.db
+*.log
+node_modules/

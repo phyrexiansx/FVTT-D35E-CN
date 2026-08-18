@@ -1,0 +1,632 @@
+{
+  "initiative": "1d20 + @attributes.init.total + (@attributes.init.total / 100)",
+  "gridDistance": 5,
+  "download": "https://www.legaciesofthedragon.com/D35E/tags/release/2.4.3/dnd35e.zip",
+  "gridUnits": "ft",
+  "authors": [
+    {
+      "name": "Antoni 'Rughalt' Sobkowicz",
+      "flags": {}
+    }
+  ],
+  "media": [
+    {
+      "url": "https://legaciesofthedragon.com/img/logo-dnd35e-bazaar.png",
+      "type": "cover",
+      "loop": false,
+      "flags": {}
+    }
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "path": "lang/en.json",
+      "name": "English",
+      "flags": {}
+    },
+    {
+        "lang": "cn",
+        "path": "lang/cn.json",
+        "name": "Chinese",
+        "flags": {}
+    }
+  ],
+  "version": "2.4.3",
+  "esmodules": [
+    "D35E.js"
+  ],
+  "styles": [
+    "D35E.css"
+  ],
+  "description": "此项目为对DND3R系统的深度汉化与规则复现，直接取自Rughalt的D35E系统，与原系统功能兼容。",
+  "packFolders": [
+    {
+      "name": "角色相关",
+      "sorting": "m",
+      "packs": [
+        "classes",
+        "racialfeatures",
+        "feats"
+      ],
+      "folders": [
+        {
+          "name": "能力",
+          "sorting": "a",
+          "packs": [
+            "class-abilities",
+            "racial-abilities",
+            "spelllike",
+            "spell-schools-domains"
+          ],
+          "folders": []
+        },
+        {
+          "name": "追随者",
+          "sorting": "a",
+          "packs": [
+            "minion",
+            "minion-classes"
+          ],
+          "folders": []
+        }
+      ]
+    },
+    {
+      "name": "怪物",
+      "sorting": "m",
+      "packs": [
+        "bestiary"
+      ],
+      "folders": [
+        {
+          "name": "创建怪物",
+          "sorting": "a",
+          "packs": [
+            "racial-hd",
+            "natural-attacks",
+            "templates"
+          ],
+          "folders": []
+        }
+      ]
+    },
+    {
+      "name": "装备相关",
+      "sorting": "m",
+      "packs": [
+        "magicitems",
+        "weapons-and-ammo",
+        "armors-and-shields",
+        "items"
+      ],
+      "folders": [
+        {
+          "name": "创建魔法物品",
+          "sorting": "a",
+          "packs": [
+            "enhancements"
+          ],
+          "folders": []
+        },
+        {
+          "name": "物品能力",
+          "sorting": "a",
+          "packs": [
+            "item-buffs"
+          ],
+          "folders": []
+        }
+      ]
+    },
+    {
+      "name": "魔法相关",
+      "sorting": "m",
+      "packs": [
+        "spells",
+        "powers"
+      ],
+      "folders": [
+        {
+          "name": "法术效应",
+          "sorting": "a",
+          "packs": [
+            "commonbuffs",
+            "spell-items",
+            "common-auras"
+          ],
+          "folders": []
+        }
+      ]
+    },
+    {
+      "name": "杂项",
+      "sorting": "m",
+      "packs": [
+        "conditions",
+        "racialhd",
+        "materials",
+        "damage-types",
+        "srd-rules",
+        "sample-macros",
+        "roll-tables",
+        "item-roll-tables",
+        "summoning-roll-tables",
+        "sample-chars",
+        "summon",
+        "scenes",
+        "docs",
+        "subspecies",
+        "traps"
+      ],
+      "folders": []
+    }
+  ],
+  "packs": [
+    {
+      "path": "packs/classes",
+      "type": "Item",
+      "system": "D35E",
+      "name": "classes",
+      "label": "职业Classes",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/minion-classes",
+      "type": "Item",
+      "system": "D35E",
+      "name": "minion-classes",
+      "label": "追随者职业Minion Classes",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/commonbuffs",
+      "type": "Item",
+      "system": "D35E",
+      "name": "commonbuffs",
+      "label": "通用状态Common Buffs",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/spellItems",
+      "type": "Item",
+      "system": "D35E",
+      "name": "spell-items",
+      "label": "法术物品Spell Items",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/commonauras",
+      "type": "Item",
+      "system": "D35E",
+      "name": "common-auras",
+      "label": "光环Common Auras",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/itembuffs",
+      "type": "Item",
+      "system": "D35E",
+      "name": "item-buffs",
+      "label": "物品状态Item Buffs",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/magic-items",
+      "type": "Item",
+      "system": "D35E",
+      "name": "magicitems",
+      "label": "魔法物品Magic Items",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/racialfeatures",
+      "type": "Item",
+      "system": "D35E",
+      "name": "racialfeatures",
+      "label": "种族Races",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/subspecies",
+      "type": "Item",
+      "system": "D35E",
+      "name": "subspecies",
+      "label": "亚种Subspecies",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/racial-abilities",
+      "type": "Item",
+      "system": "D35E",
+      "name": "racial-abilities",
+      "label": "种族能力Racial Abilities",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/natural-attacks",
+      "type": "Item",
+      "system": "D35E",
+      "name": "natural-attacks",
+      "label": "天生攻击Natural Attacks",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/class-abilities",
+      "type": "Item",
+      "system": "D35E",
+      "name": "class-abilities",
+      "label": "职业能力Class Abilities",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/spell-like-abilities",
+      "type": "Item",
+      "system": "D35E",
+      "name": "spelllike",
+      "label": "类法术能力Spell-Like Abilities",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/spells",
+      "type": "Item",
+      "system": "D35E",
+      "name": "spells",
+      "label": "法术Spells",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/spell-school-domain",
+      "type": "Item",
+      "system": "D35E",
+      "name": "spell-schools-domains",
+      "label": "法术学派与领域Spell Schools and Domains",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/templates",
+      "type": "Item",
+      "system": "D35E",
+      "name": "templates",
+      "label": "模板Templates",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/powers",
+      "type": "Item",
+      "system": "D35E",
+      "name": "powers",
+      "label": "灵能Powers",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/feats",
+      "type": "Item",
+      "system": "D35E",
+      "name": "feats",
+      "label": "专长Feats",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/items",
+      "type": "Item",
+      "system": "D35E",
+      "name": "items",
+      "label": "物品Items",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/armors-and-shields",
+      "type": "Item",
+      "system": "D35E",
+      "name": "armors-and-shields",
+      "label": "护甲和盾牌Armor and Shields",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/enhancements",
+      "type": "Item",
+      "system": "D35E",
+      "name": "enhancements",
+      "label": "附魔Enhancements",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/weapons-and-ammo",
+      "type": "Item",
+      "system": "D35E",
+      "name": "weapons-and-ammo",
+      "label": "武器Weapons",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/racial-hd",
+      "type": "Item",
+      "system": "D35E",
+      "name": "racialhd",
+      "label": "种族生命骰Racial HD",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/materials",
+      "type": "Item",
+      "system": "D35E",
+      "name": "materials",
+      "label": "材料Materials",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/damage-types",
+      "type": "Item",
+      "system": "D35E",
+      "name": "damage-types",
+      "label": "伤害类型Damage Types",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/srd-rules",
+      "type": "JournalEntry",
+      "system": "D35E",
+      "name": "srd-rules",
+      "label": "SRD规则SRD Rules Extended Descriptions",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/sample-macros",
+      "type": "Macro",
+      "system": "D35E",
+      "name": "sample-macros",
+      "label": "简易宏Sample Macros",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/roll-tables",
+      "type": "RollTable",
+      "system": "D35E",
+      "name": "roll-tables",
+      "label": "随机表Roll Tables",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/item-roll-tables",
+      "type": "RollTable",
+      "system": "D35E",
+      "name": "item-roll-tables",
+      "label": "物品随机表Item Roll Tables",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/summoning-roll-tables",
+      "type": "RollTable",
+      "system": "D35E",
+      "name": "summoning-roll-tables",
+      "label": "召唤表Summoning Roll Tables",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/bestiary",
+      "type": "Actor",
+      "system": "D35E",
+      "name": "bestiary",
+      "label": "怪物图鉴Bestiary",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/minions",
+      "type": "Actor",
+      "system": "D35E",
+      "name": "minion",
+      "label": "追随者Minions (Familiars, Animal Companions)",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/sample-chars",
+      "type": "Actor",
+      "system": "D35E",
+      "name": "sample-chars",
+      "label": "预设角色Sample Characters",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/summon",
+      "type": "Actor",
+      "system": "D35E",
+      "name": "summon",
+      "label": "召唤图鉴Summoned Bestiary",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/traps",
+      "type": "Actor",
+      "system": "D35E",
+      "name": "traps",
+      "label": "陷阱Traps",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/conditions",
+      "type": "JournalEntry",
+      "system": "D35E",
+      "name": "conditions",
+      "label": "状态Conditions",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/documentation",
+      "type": "JournalEntry",
+      "system": "D35E",
+      "name": "docs",
+      "label": "教程Documentation",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    },
+    {
+      "path": "packs/scenes",
+      "type": "Scene",
+      "system": "D35E",
+      "name": "scenes",
+      "label": "场景Scenes",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "flags": {}
+    }
+  ],
+  "id": "D35E",
+  "socket": true,
+  "url": "https://www.legaciesofthedragon.com",
+  "title": "3.5e SRD",
+  "primaryTokenAttribute": "attributes.hp",
+  "manifest": "https://www.legaciesofthedragon.com/D35E/tags/release/2.4.3/system.json",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11.311"
+  }
+}
