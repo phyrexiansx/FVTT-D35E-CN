@@ -36,11 +36,34 @@ let _dragState = null;
  * 说明：注入手柄（仅 GM）+ 指针事件委托 + 广播通道 hooks + 历史消息手柄补注。
  */
 export function registerChatDrag() {
+  _patchPostOneScroll();
   _bindHandleHooks();
   _bindPointerEvents();
   _bindChannelHooks();
   // 历史消息在 ready 前已渲染（hook 会错过）：主动注入一次手柄
   _injectHandles($("#chat"));
+}
+
+/**
+ * patch ChatLog.postOne：广播载体消息 post 后不改变滚动位置
+ * 说明：载体消息创建会触发核心 scrollBottom（自动滚底），打扰用户阅读长聊天；
+ *      这里记录 post 前的滚动位置并在 post 后恢复（GM 端与接收端同时生效）。
+ */
+function _patchPostOneScroll() {
+  const proto = ChatLog.prototype;
+  if (proto.postOne.__d35eReorderPatched) return;
+  proto.postOne.__d35eReorderPatched = true;
+  const orig = proto.postOne;
+  proto.postOne = async function (message, notify, create) {
+    const isCarrier = !!message?.getFlag?.("D35E", FLAG);
+    if (!isCarrier) return orig.call(this, message, notify, create);
+    // 记录所有聊天容器（主日志 + 弹出窗口）的滚动位置
+    const scrolls = [...document.querySelectorAll(LOG_SELECTOR.join(","))];
+    const tops = scrolls.map((s) => [s, s.scrollTop]);
+    await orig.call(this, message, notify, create);
+    // postOne 内部的 scrollBottom 已滚动到底，这里还原
+    for (const [s, t] of tops) s.scrollTop = t;
+  };
 }
 
 /**
