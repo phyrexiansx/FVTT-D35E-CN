@@ -4,6 +4,7 @@ import {createCustomChatMessage} from '../../chat.js';
 import {Roll35e} from '../../roll.js';
 import {targetAutoSettle, actorHasIntuition} from '../../automation/intuitive.js';
 import {ItemUse} from '../../item/extensions/use.js';
+import {DistanceHelper} from '../../canvas/distance-helper.js';
 
 // [D35E] 反击：消息级去重（双聊天窗口对同一消息可能各结算一次，按 消息id|目标actor 去重）
 const _counterattackRecent = new Map();
@@ -299,13 +300,16 @@ export class ActorDamageHelper {
                         "system.attributes.hp.value": Math.clamped(hp.value - (value - dt), -100, hp.max),
                     }, { hitSound: true }) //[D35E]受击音效：伤害结算标记（手动改血不播）
                 );
-                // [D35E] 反击：命中且实际造成伤害后，检查攻击来源（近战武器/近战法术攻击且未勾选「长触及」），
-                // 若本角色拥有带「反击」开关的攻击且未被「阻止自动结算」拦截 → 自动对来源使用
-                if (hit && (value > 0 || nonLethal > 0) && attackerId) {
-                    ActorDamageHelper.tryCounterattack(a, attackerId, attackerTokenId, ev?.currentTarget).catch((err) =>
-                        console.error("D35E | Counterattack failed", err)
-                    );
-                }
+            }
+            // [D35E] 反击：命中（且实际造成伤害）或未命中（勾选「未命中也触发反击」的攻击）→ 结算后自动对来源使用；
+            // 命中判定与伤害值随调用传入，由 tryCounterattack 按各反击攻击的开关自行过滤
+            if (attackerId) {
+                ActorDamageHelper.tryCounterattack(a, attackerId, attackerTokenId, ev?.currentTarget, {
+                    hit: hit,
+                    damageDealt: hit && (value > 0 || nonLethal > 0),
+                }).catch((err) =>
+                    console.error("D35E | Counterattack failed", err)
+                );
             }
         }
         return Promise.all(promises);
@@ -321,9 +325,11 @@ export class ActorDamageHelper {
      * @param {string|null} attackerTokenId 攻击者 token id（格式 sceneId.tokenId）
      * @param {HTMLElement} button 伤害按钮 DOM（用于回溯来源攻击卡）
      */
-    static async tryCounterattack(targetActor, attackerId, attackerTokenId, button) {
+    static async tryCounterattack(targetActor, attackerId, attackerTokenId, button, options = {}) {
         try {
             if (!targetActor || !attackerId || !button) return;
+            // [D35E]未命中也触发反击：调用方传入本次结算结果（hit / damageDealt）
+            const { hit = true, damageDealt = false } = options;
             if (Date.now() < _counterattackBusyUntil) return; // 反击链防递归
             // 消息级去重：双聊天窗口对同一消息可能各结算一次，只触发一次
             const msgEl = button.closest?.(".message");
@@ -346,17 +352,28 @@ export class ActorDamageHelper {
             if (!attackerActor) return;
             const sourceItem = attackerActor.items.get(itemId) || game.items.get(itemId);
             if (!sourceItem) return;
-            // 仅近战武器攻击 / 近战法术攻击触发
-            if (!["mwak", "msak"].includes(getProperty(sourceItem.system, "actionType"))) return;
-            // 来源攻击勾选「长触及」→ 反击够不着，不触发（旧数据兜底：由武器生成攻击时带入的 rch）
-            if (getProperty(sourceItem.system, "longReach") === true) return;
-            if (getProperty(sourceItem.system, "originalWeaponProperties.rch") === true) return;
+            // [D35E]来源攻击类型：近战/远程武器、近战/远程法术均可成为反击目标
+            const sourceActionType = getProperty(sourceItem.system, "actionType") || "";
+            if (!["mwak", "rwak", "msak", "rsak"].includes(sourceActionType)) return;
             // 本角色开启「阻止自动结算」→ 不自动生效
             if (actorHasIntuition(targetActor)) return;
             // 本角色带「反击」开关的攻击（attack 类）
             let counterItems = (targetActor.items || []).filter(
                 (i) => i.type === "attack" && i.system?.counterattack === true
             );
+            // [D35E]「未命中也触发反击」开关：勾选的反击不要求命中/造成伤害（触发条件见下）
+            const onMissItems = counterItems.filter((i) => i.system?.counterattackOnMiss === true);
+            const hitOnlyItems = counterItems.filter((i) => !i.system?.counterattackOnMiss);
+            if (
+                !hit ||
+                !damageDealt ||
+                !["mwak", "msak"].includes(sourceActionType) ||
+                getProperty(sourceItem.system, "longReach") === true ||
+                getProperty(sourceItem.system, "originalWeaponProperties.rch") === true
+            ) {
+                hitOnlyItems.length = 0;
+            }
+            counterItems = [...hitOnlyItems, ...onMissItems];
             // [D35E]多 Token 修正：反击发起者（受伤者）Token 白闪锁定——取来源攻击卡 data-target 第一个（提前取出供借机次数判断）
             let selfTokenId = null;
             try {
@@ -399,6 +416,11 @@ export class ActorDamageHelper {
                 // 依次自动使用（标记 _pendingCounterattack：useAttack 注入 counterattack=1 且按单次攻击掷骰）
                 _counterattackBusyUntil = Date.now() + _COUNTERATTACK_BUSY_MS;
                 for (const item of counterItems) {
+                    // [D35E]「未命中也触发反击」：攻击者必须在此角色触及范围内（几何判断，不看来源长触及）
+                    if (item.system?.counterattackOnMiss === true && sourceToken && selfTokenId) {
+                        const selfToken = canvas.tokens.get(selfTokenId);
+                        if (!selfToken || !DistanceHelper.isThreatened(selfToken, sourceToken)) continue;
+                    }
                     item._pendingCounterattack = true;
                     if (selfTokenId) item._animToken = selfTokenId;
                     try {

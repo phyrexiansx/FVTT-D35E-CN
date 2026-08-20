@@ -2515,8 +2515,9 @@ const _ChatPortrait = class _ChatPortrait {
       //（与系统 whisper 消息的 linear-gradient + 材质 双层做法一致；浓度 0.25 可调）
       const { r, g, b } = _ChatPortrait.hexToRgb(authorColor);
       html[0].style.backgroundImage = `linear-gradient(rgba(${r}, ${g}, ${b}, 0.25), rgba(${r}, ${g}, ${b}, 0.25)), url("systems/D35E/icons/ui/parchment-tile.png")`;
-      html[0].style.backgroundSize = "288px";
-      html[0].style.backgroundPositionY = "40px";
+            // [D35E] 双层背景均 cover 铺满（材质不再按 288px 平铺，避免与消息宽度不整除产生右侧边缘截断；取消 40px 偏移，染色完整覆盖整条消息）
+      html[0].style.backgroundImage = `linear-gradient(rgba(${r}, ${g}, ${b}, 0.25), rgba(${r}, ${g}, ${b}, 0.25)), url("systems/D35E/icons/ui/parchment-tile.png")`;
+      html[0].style.backgroundSize = "cover, cover";
     }
   }
   /** [D35E] 十六进制颜色 → {r,g,b}（染色淡色用） */

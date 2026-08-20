@@ -175,6 +175,10 @@
               <input id="{{randomUuid}}-data.counterattack" type="checkbox" name="system.counterattack" {{checked data.system.counterattack}}/>
               <label style="width: 125px" for="{{randomUuid}}-data.counterattack">{{#if data.system.counterattack}}<i class="far fa-check-square"></i>{{else}}<i class="far fa-square"></i>{{/if}}{{localize "D35E.Counterattack"}}</label>
             </div>
+            <div class="toggle" style="width: 125px">
+              <input id="{{randomUuid}}-data.counterattackOnMiss" type="checkbox" name="system.counterattackOnMiss" {{checked data.system.counterattackOnMiss}}/>
+              <label style="width: 125px" for="{{randomUuid}}-data.counterattackOnMiss">{{#if data.system.counterattackOnMiss}}<i class="far fa-check-square"></i>{{else}}<i class="far fa-square"></i>{{/if}}{{localize "D35E.CounterattackOnMiss"}}</label>
+            </div>
           </div>
         </div>
 

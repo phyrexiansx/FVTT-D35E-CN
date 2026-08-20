@@ -41,10 +41,15 @@ function _ensureLayers() {
     if (!_lineLayer || _lineLayer.destroyed) {
       _lineLayer = new PIXI.Container();
       _lineLayer.name = "d35e-target-lines";
-      canvas.controls.addChild(_lineLayer);
+      _lineLayer.interactive = false;
+      _lineLayer.interactiveChildren = false;
+      // [D35E]渲染在 canvas.primary（token 纹理之下），避免拦截光标对 token 的选取
+      canvas.primary.addChild(_lineLayer);
       _fxLayer = new PIXI.Container();
       _fxLayer.name = "d35e-target-fx";
-      canvas.controls.addChild(_fxLayer);
+      _fxLayer.interactive = false;
+      _fxLayer.interactiveChildren = false;
+      canvas.primary.addChild(_fxLayer);
       if (!_fxCb) {
         _fxCb = () => _renderFx();
         canvas.app.ticker.add(_fxCb);
@@ -89,6 +94,7 @@ function _renderFx() {
           const x2 = tt.center.x, y2 = tt.center.y;
           // 线段 + 目标端圆点
           const g = new PIXI.Graphics();
+          g.interactive = false;
           g.lineStyle(LINE_WIDTH, color, LINE_ALPHA);
           g.moveTo(x1, y1);
           g.lineTo(x2, y2);
@@ -101,6 +107,7 @@ function _renderFx() {
           const x = x1 + (x2 - x1) * p;
           const y = y1 + (y2 - y1) * p;
           const fg = new PIXI.Graphics();
+          fg.interactive = false;
           fg.beginFill(color, 0.25);
           fg.drawCircle(x, y, 9);
           fg.endFill();

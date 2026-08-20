@@ -98,13 +98,16 @@ function onAoOChannelMessage(message) {
   if (isRecipient && !isAuthor) {
     aoAttackPrompt(payload).catch((e) => console.error("D35E | AoO prompt failed", e));
   }
-  // GM 延迟删除（保证接收端已处理；玩家端无权删除，数据同步消失）
-  if (game.user.isGM) {
-    setTimeout(() => {
-      message.delete().catch(() => {});
-    }, 1000);
-  }
+  // ⚠️ v11.315 服务端删除"空内容+flags 的 whisper 消息"会触发 ServerDatabaseBackend
+  // _deleteDocuments 读取 invalid 崩溃（核心 bug），且错误经 socket 回调走 _handleError 显示，
+  // delete() 的 catch 无法拦截。因此不再自动删除：提示消息 content 为空，聊天记录中不可见，
+  // 数据无害保留（待 Foundry 修复后可恢复自动清理）。
 }
+
+// [D35E]借机提示载体消息只是数据：渲染时直接隐藏，聊天不出现空耳语（GM 与接收方均不显示）
+Hooks.on("renderChatMessage", (message, html) => {
+  if (message.getFlag("D35E", "aooPrompt")) html.hide();
+});
 
 /**
  * 借机触发后：为可借机的威胁者分发借机窗口。
@@ -122,6 +125,8 @@ export function handleAoOThreat(moverToken, threateningTokens) {
     // 右键隐藏 / 无助（helpless）角色不参与借机攻击
     if (t.document?.hidden) continue;
     if (t.actor.system?.attributes?.conditions?.helpless) continue;
+    // [D35E]没有可用借机攻击的角色不出现在借机分发与提示中
+    if (!getAoOAttacks(t.actor).length) continue;
     // 借机次数已用完 → 跳过（发送端预检，避免无谓分发）
     const combatant = game.combat?.combatants.find((c) => c.tokenId === t.id);
     if (combatant) {
@@ -273,20 +278,25 @@ async function executeAoOAttack(item, threatToken, moverToken) {
         await game.user.updateTokenTargets(ids);
       }
     }
-    // 扣减借机次数（GM/owner 权限；失败静默）
-    const tokenId = threatToken?.id || item.actor?.token?.id;
-    const combatant = game.combat?.combatants.find((c) => c.tokenId === tokenId);
-    if (combatant) {
-      const used = combatant.getFlag("D35E", "usedAaoCount") || 0;
-      combatant.update({ "flags.D35E.usedAaoCount": used + 1 }).catch(() => {});
-    }
     // 标记本次攻击为借机攻击（useAttack 内注入 rollData）
     item._pendingAoO = true;
+    let wasRolled = false;
     try {
-      await new ItemUse(item).useAttack({ skipDialog: false });
+      const result = await new ItemUse(item).useAttack({ skipDialog: false });
+      // [D35E]借机次数在"实际发起攻击"（掷骰完成）后才消耗；取消掷骰不扣减
+      wasRolled = result?.wasRolled === true;
     } finally {
       // 兜底清理（useAttack 因权限/数量检查提前 return 时避免标记残留影响下次攻击）
       if (item._pendingAoO) delete item._pendingAoO;
+    }
+    // [D35E]攻击发起后扣减借机次数（GM/owner 权限；失败静默）
+    if (wasRolled) {
+      const tokenId = threatToken?.id || item.actor?.token?.id;
+      const combatant = game.combat?.combatants.find((c) => c.tokenId === tokenId);
+      if (combatant) {
+        const used = combatant.getFlag("D35E", "usedAaoCount") || 0;
+        combatant.update({ "flags.D35E.usedAaoCount": used + 1 }).catch(() => {});
+      }
     }
   } catch (e) {
     console.error("D35E | AoO attack failed", e);

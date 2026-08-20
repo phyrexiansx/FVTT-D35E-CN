@@ -26,6 +26,76 @@ import { ItemDrawerHelper } from "./helpers/itemDrawerHelper.js";
 import {CompendiumBrowser} from '../../apps/compendium-browser.js';
 import {ItemEquipHook} from '../../item/hooks/itemEquipHook.js';
 import {actorHasIntuition, actorHasNoAoO} from "../../automation/autoApply.js";
+import { setupItemDragPreview } from "./item-drag-preview.js";
+
+/**
+ * [D35E]专长/职业特性文件夹分组辅助（按来源分类、手动分组、展开状态）
+ */
+
+/**
+ * 生成文件夹展开状态的本地存储键（按角色+分组隔离，刷新后保持）
+ */
+function _featureFoldersStateKey(actorId, sectionId) {
+  return `d35e.featureFolders.${actorId}.${sectionId}`;
+}
+
+/**
+ * 读取某分组的文件夹展开状态（默认全部展开）
+ */
+function _readFolderStates(actorId, sectionId) {
+  try {
+    return JSON.parse(localStorage.getItem(_featureFoldersStateKey(actorId, sectionId)) || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * 从特性来源（如"术士Sorcerer 8"）提取职业名（去掉末尾等级）
+ */
+function _classFeatureSourceName(f) {
+  const src = String(f.system?.source || "").trim();
+  if (!src) return "";
+  const parts = src.split(" ");
+  parts.pop();
+  return parts.join(" ").trim();
+}
+
+/**
+ * 按分类把物品构建为文件夹列表
+ * @param {Array} items 物品列表
+ * @param {Function} getFolder 返回每个物品的文件夹名（空字符串/空值表示无归属，不放入文件夹）
+ * @param {Array} customFolders 自定义文件夹名（即使为空也显示）
+ * @param {string} baseFolder 基础文件夹名（排序时置顶）
+ * @param {string} actorId 角色 id（展开状态存储）
+ * @param {string} sectionId 分组 id（展开状态存储）
+ * @returns {Array} [{name, items, collapsed}]
+ */
+function _buildFeatureFolders(items, getFolder, customFolders, baseFolder, actorId, sectionId) {
+  const map = new Map();
+  for (const it of items || []) {
+    const name = getFolder(it);
+    if (!name) continue;
+    if (!map.has(name)) map.set(name, []);
+    map.get(name).push(it);
+  }
+  for (const name of customFolders || []) {
+    if (!map.has(name)) map.set(name, []);
+  }
+  const states = _readFolderStates(actorId, sectionId);
+  const folders = Array.from(map.entries()).map(([name, list]) => ({
+    name,
+    items: list,
+    collapsed: states[name] === true,
+  }));
+  // 基础文件夹置顶，其余按名称排序
+  folders.sort((a, b) => {
+    if (a.name === baseFolder) return -1;
+    if (b.name === baseFolder) return 1;
+    return String(a.name).localeCompare(String(b.name), "zh");
+  });
+  return folders;
+}
 
 /**
  * Extend the basic ActorSheet class to do all the PF things!
@@ -127,6 +197,7 @@ export class ActorSheetPF extends ActorSheet {
     sheetData.intuitiveManualSet = this.actor.getFlag("D35E", "intuitiveManual") !== undefined;
     // [D35E]不会被借机（战斗页标签开关）
     sheetData.noAoOEffective = actorHasNoAoO(this.actor);
+    sheetData.noAoOManualSet = this.actor.getFlag("D35E", "noAoOManual") !== undefined;
     // The Actor and its Items
     sheetData.actor = this.actor.data.toObject(false);
     sheetData.items = sheetData.actor.items.map((i) => {
@@ -765,6 +836,9 @@ export class ActorSheetPF extends ActorSheet {
       li.setAttribute("draggable", true);
       li.addEventListener("dragstart", handler, false);
     });
+    // [D35E]物品拖拽视觉增强：预览卡 + 文件夹/排序目标高亮（不改数据转移）
+    setupItemDragPreview(html);
+    // [D35E]文件夹物品平滑拖动（专长/职业特性分区，取代旧 HTML5 拖放）
 
     // Limited Sheet Actions
     html.find('[data-action=show-image]').on('click', (ev) => {
@@ -882,13 +956,23 @@ export class ActorSheetPF extends ActorSheet {
       this.render(false);
     });
     html.find(".noaoo-toggle").change(async (ev) => {
-      await this.actor.setFlag("D35E", "noAoO", ev.currentTarget.checked);
+      await this.actor.setFlag("D35E", "noAoOManual", ev.currentTarget.checked);
       this.render(false);
     });
         html.find(".intuitive-reset").click(async (ev) => {
       await this.actor.unsetFlag("D35E", "intuitiveManual");
       this.render(false);
     });
+    html.find(".noaoo-reset").click(async (ev) => {
+      await this.actor.unsetFlag("D35E", "noAoOManual");
+      this.render(false);
+    });
+    // [D35E]专长/特性文件夹：折叠、新建、删除、拖放归组
+    html.find(".feature-folder-toggle").click(this._onFeatureFolderToggle.bind(this));
+    html.find(".feature-folder-create").click(this._onFeatureFolderCreate.bind(this));
+    html.find(".feature-folder-delete").click(this._onFeatureFolderDelete.bind(this));
+    html.find(".feature-folder").on("dragover", (ev) => ev.preventDefault());
+    html.find(".feature-folder").on("drop", this._onFeatureFolderDrop.bind(this));
     html.find(".fix-containers").click((ev) => this._onCharacterClearContainers(ev));
     html.find(".check-updates").click((ev) => this._onCharacterCheckUpdates(ev));
     html.find(".generate-statblock").click((ev) => this._onCharacterGenerateStatblock(ev));
@@ -1436,12 +1520,18 @@ export class ActorSheetPF extends ActorSheet {
 
     // Toggle summary
     if (li.hasClass("expanded")) {
+      // [D35E]收起：先完成收起动画再移除 expanded 类——expanded 类负责名称行不被 summary 同排压缩，
+      // 若提前移除，slideUp 期间名称行会瞬间塌陷（图标/名字闪烁消失）
       let summary = li.children(".item-summary");
       if (li.attr("data-item-id") === "passive-feature") {
-        summary.slideUp(200);
+        summary.slideUp(200, () => li.removeClass("expanded"));
       } else {
-        summary.slideUp(200, () => summary.remove());
+        summary.slideUp(200, () => {
+          summary.remove();
+          li.removeClass("expanded");
+        });
       }
+      return; // 收起分支自行处理，跳过末尾的 toggleClass
     } else {
       let summary = li.children(".item-summary");
       if (!summary.length && item) {
@@ -3190,7 +3280,41 @@ export class ActorSheetPF extends ActorSheet {
     sheetData.inventory = Object.values(inventory);
     sheetData.spellbookData = spellbookData;
     sheetData.deckData = deckData;
-    sheetData.features = Object.values(features);
+    // [D35E]专长按来源分类为文件夹；职业特性按职业来源/手动分组为文件夹
+    const baseFolder = game.i18n.localize("D35E.Base");
+    const featCustomFolders = this.actor.getFlag("D35E", "featCustomFolders") || [];
+    const classFeatCustomFolders = this.actor.getFlag("D35E", "classFeatCustomFolders") || [];
+    // 专长：来源为空或 Base →「基础」，其余按来源值分文件夹
+    features.feat.folders = _buildFeatureFolders(
+      features.feat.items,
+      (f) => {
+        const src = String(f.system?.source || "").trim();
+        return (!src || src === "Base" || src === baseFolder) ? baseFolder : src;
+      },
+      featCustomFolders,
+      baseFolder,
+      this.actor.id,
+      "feat"
+    );
+    // 职业特性：手动分组（featureFolder flag）优先，其次按来源职业名；无归属的平铺在文件夹外
+    // 注意：始终显示全部职业特性（不受 classFeaturesInTabs 设置影响），保证文件夹分组可见
+    const allClassFeats = this.actor.items.filter((i) => i.system?.featType === "classFeat");
+    features.classFeat.items = allClassFeats;
+    features.classFeat.folders = _buildFeatureFolders(
+      allClassFeats,
+      (f) => f.getFlag("D35E", "featureFolder") || _classFeatureSourceName(f),
+      classFeatCustomFolders,
+      baseFolder,
+      this.actor.id,
+      "classFeat"
+    );
+    features.classFeat.unfiled = allClassFeats.filter(
+      (f) => !f.getFlag("D35E", "featureFolder") && !_classFeatureSourceName(f)
+    );
+    // 专长全部分类归组（item 列表留空，由文件夹渲染）；特性列表只保留无归属的（文件夹外平铺）
+    features.feat.items = [];
+    // 附上分组 key（模板里 data-section / data-tab 需要用到分组名而非数组下标）
+    sheetData.features = Object.entries(features).map(([key, section]) => ({ ...section, key }));
     sheetData.buffs = buffSections;
     sheetData.attacks = attackSections;
     sheetData.counters = this.actor.system.counters;
@@ -3204,6 +3328,126 @@ export class ActorSheetPF extends ActorSheet {
 
     // Handlebars.registerPartial('myPartial', 'This is a tab generated from something!{{prefix}}');
     // data.myVariable = "myPartial";
+  }
+
+  /**
+   * [D35E]切换文件夹展开/收起，并记住状态（localStorage，刷新后保持）
+   */
+  _onFeatureFolderToggle(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const li = ev.currentTarget.closest(".feature-folder");
+    if (!li) return;
+    const key = _featureFoldersStateKey(this.actor.id, li.dataset.section || "feat");
+    const states = _readFolderStates(this.actor.id, li.dataset.section || "feat");
+    states[li.dataset.folder] = !(states[li.dataset.folder] === true);
+    try {
+      localStorage.setItem(key, JSON.stringify(states));
+    } catch (e) {
+      /* 忽略存储异常 */
+    }
+    li.classList.toggle("collapsed", states[li.dataset.folder]);
+    ev.currentTarget.querySelector("i")?.classList.toggle("fa-caret-right", states[li.dataset.folder]);
+    ev.currentTarget.querySelector("i")?.classList.toggle("fa-caret-down", !states[li.dataset.folder]);
+  }
+
+  /**
+   * [D35E]新建专长/特性文件夹（自建文件夹名存角色 flag，即使为空也显示）
+   */
+  async _onFeatureFolderCreate(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const row = ev.currentTarget.closest("li") || ev.currentTarget;
+    // 分组取行上的 data-section（模板已按 section.key 写入），兜底 "feat"
+    const section = row.dataset?.section || "feat";
+    const flagKey = section === "classFeat" ? "classFeatCustomFolders" : "featCustomFolders";
+    const name = await new Promise((resolve) => {
+      new Dialog({
+        title: game.i18n.localize("D35E.NewFeatureFolder"),
+        content: `<input type="text" placeholder="${game.i18n.localize("D35E.FolderNamePrompt")}"/>`,
+        buttons: {
+          ok: { label: "OK", callback: (html) => resolve(html.find("input").val().trim()) },
+          cancel: { label: "Cancel", callback: () => resolve("") },
+        },
+        default: "cancel",
+      }).render(true);
+    });
+    if (!name) return;
+    const list = this.actor.getFlag("D35E", flagKey) || [];
+    if (!list.includes(name)) {
+      list.push(name);
+      await this.actor.setFlag("D35E", flagKey, list);
+    }
+    this.render(false);
+  }
+
+  /**
+   * [D35E]删除自建文件夹：同时移除其中物品的归属（专长清空来源、特性移除手动分组）
+   */
+  /**
+   * [D35E]删除文件夹：内部确认弹窗（与删除物品一致，不再用浏览器 confirm）
+   * 说明：确认后移除自建文件夹，并把其中物品的分组清空（回平铺区）
+   */
+  _onFeatureFolderDelete(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const li = ev.currentTarget.closest(".feature-folder");
+    if (!li) return;
+    const folderName = li.dataset.folder;
+    const section = li.dataset.section || "feat";
+    const flagKey = section === "classFeat" ? "classFeatCustomFolders" : "featCustomFolders";
+    const deleteFolder = async () => {
+      const list = this.actor.getFlag("D35E", flagKey) || [];
+      await this.actor.setFlag("D35E", flagKey, list.filter((n) => n !== folderName));
+      const updates = [];
+      for (const it of this.actor.items) {
+        if (section === "feat" && String(it.system?.source || "") === folderName) {
+          updates.push({ _id: it.id, "system.source": "" });
+        } else if (section === "classFeat" && it.getFlag("D35E", "featureFolder") === folderName) {
+          updates.push({ _id: it.id, "flags.D35E.featureFolder": null });
+        }
+      }
+      if (updates.length) await this.actor.updateEmbeddedDocuments("Item", updates);
+      this.render(false);
+    };
+    const msg = `<p>${game.i18n.format("D35E.DeleteFeatureFolderConfirm", { folder: folderName })}</p>`;
+    Dialog.confirm({
+      title: game.i18n.localize("D35E.DeleteFeatureFolder"),
+      content: msg,
+      yes: deleteFolder,
+    });
+  }
+
+  /**
+   * [D35E]把专长/特性拖入文件夹：专长设置来源为该文件夹名；特性设置手动分组 flag（手动优先于职业来源）
+   */
+  async _onFeatureFolderDrop(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const folderEl = ev.currentTarget;
+    const folderName = folderEl.dataset?.folder;
+    const section = folderEl.dataset?.section || "feat";
+    if (!folderName) return;
+    const raw = ev.originalEvent?.dataTransfer?.getData("text/plain");
+    if (!raw) return;
+    let data = null;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    if (data?.type !== "Item" || !data?.uuid) return;
+    // v11 使用全局 fromUuid 解析拖放物品
+    const item = await fromUuid(data.uuid);
+    if (!item) return;
+    if (section === "feat") {
+      // 专长分类即来源字段
+      await item.update({ "system.source": folderName });
+    } else if (section === "classFeat") {
+      // 特性手动分组（不与职业本身绑定）
+      await item.update({ "flags.D35E.featureFolder": folderName });
+    }
+    this.render(false);
   }
 
   _isAttackUseable(a, equippedWeapons) {

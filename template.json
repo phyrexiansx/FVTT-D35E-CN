@@ -2362,6 +2362,7 @@
       "returning": false,
       "longReach": false,
       "counterattack": false,
+    "counterattackOnMiss": false,
       "magic": false,
       "epic": false,
       "alignment": {

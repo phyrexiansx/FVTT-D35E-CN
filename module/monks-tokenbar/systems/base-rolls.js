@@ -61,10 +61,37 @@ export class BaseRolls {
         return false;
     }
 
+    /**
+     * 判定掷骰结果是否达到 DC（成功/失败）
+     * 防御：roll 可能为序列化 JSON（tokenbar 的 msgtoken.roll 经 toJSON 存储，无 total getter），
+     *       先归一化为 Roll 实例再比较；无法归一化或结果非数值时按“不可判定”处理。
+     * @param {Roll|object|string} roll 掷骰结果（Roll 实例 / JSON / 序列化字符串）
+     * @param {number} dc 检定 DC
+     * @returns {{passed: boolean|undefined}} passed=true 成功 / false 失败 / undefined 不可判定
+     */
     rollSuccess(roll, dc, actorId, request) {
-        let passed = roll.total >= dc;
+        // [D35E]归一化：JSON/字符串 → Roll 实例（无 total 的原始数据无法判定）
+        const r = this._normalizeRoll(roll);
+        if (!r || !Number.isFinite(r.total)) return { passed: undefined };
+        const passed = r.total >= dc;
         return { passed };
-;
+    }
+
+    /**
+     * 将掷骰数据归一化为 Roll 实例（兼容 Roll 实例 / Roll.toJSON 结果 / 序列化字符串）
+     * @param {Roll|object|string} roll 原始掷骰数据
+     * @returns {Roll|null} 归一化后的 Roll，失败返回 null
+     */
+    _normalizeRoll(roll) {
+        if (!roll) return null;
+        if (roll instanceof Roll) return roll;
+        try {
+            if (typeof roll === "string") return Roll.fromJSON(roll);
+            if (roll.formula) return Roll.fromData(roll);
+        } catch (e) {
+            // 重建失败：按不可判定处理（保持调用方安全）
+        }
+        return null;
     }
 
     get showXP() {

@@ -806,6 +806,12 @@ export class SavingThrow {
                         }
                         if (msgtoken.roll != undefined && $.isNumeric(dc))
                             Object.assign(msgtoken, MonksTokenBar.system.rollSuccess(msgtoken.roll, dc, msgtoken.actorid, msgtoken.request || requests[0]));
+                        // [D35E]展示用自动判定：未进入自动结算（passed=undefined）时也按数值比较补判，
+                        // 让 GM 侧自动选中 ✓/✗、玩家侧可见结果（不影响 autoApply 自动结算，其不监听 tokenbar 流程）
+                        if (msgtoken.passed === undefined) {
+                            const normRoll = MonksTokenBar.system._normalizeRoll ? MonksTokenBar.system._normalizeRoll(msgtoken.roll) : null;
+                            if (normRoll && Number.isFinite(normRoll.total)) msgtoken.passed = normRoll.total >= dc;
+                        }
 
                     $('.item[data-item-id="' + update.id + '"] .dice-roll .dice-tooltip', content).remove();
                     let tooltipElem = $(tooltip);
@@ -1112,9 +1118,11 @@ export class SavingThrow {
         let requests = message.getFlag("D35E", 'requests');
 
         const oldRoll = msgToken.roll;
+        // [D35E]oldRoll 为序列化 JSON（无 total getter）：先重建为 Roll 实例，best/worst 比较才有效
+        const oldRollObj = (oldRoll instanceof Roll) ? oldRoll : (() => { try { return Roll.fromJSON(oldRoll); } catch (e) { return null; } })();
         let keptRoll = roll;
-        if (keep === "best" && oldRoll.total > roll.total || keep === "worst" && oldRoll.total < roll.total) {
-            keptRoll = oldRoll;
+        if ((keep === "best" && oldRollObj && oldRollObj.total > roll.total) || (keep === "worst" && oldRollObj && oldRollObj.total < roll.total)) {
+            keptRoll = oldRollObj;
         }
 
         let dc = message.getFlag("D35E", 'dc');

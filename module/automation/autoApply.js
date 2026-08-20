@@ -153,7 +153,7 @@ function getDamageButtonForSave(saveBtn) {
  * 复用 damage-description 模板（hit=false），让参与者知道发生了什么（修复：未命中被静默跳过）。
  */
 async function notifyMiss(targetActor, attackTotal, card) {
-  try {
+    try {
     const attackerId = card.attr("data-actor-id");
     const attacker = attackerId ? game.actors.get(attackerId) : null;
     const chatData = {
@@ -265,9 +265,9 @@ async function applyDamageToTarget(actor, damageBtn, { half = false, hpBase = un
 
 /**单个豁免块（对应一次攻击/一个能力）自动结算 */
 async function settleWithSave(card, saveBtn, srBtn, targets) {
-  //攻击类标志：卡片带 data-attacktotal（模板仅 atk.hasAttack 时渲染）
+      //攻击类标志：卡片带 data-attacktotal（模板仅 atk.hasAttack 时渲染）
   const hasAttackTotal = saveBtn.attr("data-attacktotal") !== undefined && saveBtn.attr("data-attacktotal") !== "";
-  const attackTotal = parseInt(saveBtn.attr("data-attacktotal") || "-1337", 10);
+    const attackTotal = parseInt(saveBtn.attr("data-attacktotal") || "-1337", 10);
   const touch = saveBtn.attr("data-touch") === "true";
   const natural20 = saveBtn.attr("data-natural") === "true";
   const fumble = saveBtn.attr("data-fumble") === "true";
@@ -290,17 +290,33 @@ async function settleWithSave(card, saveBtn, srBtn, targets) {
   for (const t of targets) {
     // [D35E]R13：直接以 token 自身 actor 结算——unlinked（NPC 多 token）写各自 token 独立数据；linked 即角色卡本身
     const a = t.actor;
-    if (!canSettleActor(a)) continue;
+        if (!canSettleActor(a)) continue;
     // [D35E]不会伤害友军：来源能力勾选且目标与来源阵营相同 → 跳过该目标
     if (_noFriendlyFireSkip(card, a)) continue;
     const base = hpBaselines.get(t.id);
 
     if (hasAttackTotal) {
-      //攻击类（mwak/rwak/msak/rsak）：不论是否有豁免效果，先进行 AC 对抗 +伤害检定
+            //攻击类（mwak/rwak/msak/rsak）：不论是否有豁免效果，先进行 AC 对抗 +伤害检定
       //1) AC 命中门：未命中 →不伤害、不豁免
       if (!isAttackHit(attackTotal, { actor: a }, touch, natural20, fumble)) {
         // [D35E]未命中也输出一条结算提示（让参与者知道发生了什么，而不是静默跳过）
-        await notifyMiss(a, attackTotal, card);
+                notifyMiss(a, attackTotal, card).catch(() => {});
+        // [D35E]自动结算兼容：「未命中也触发反击」的反击攻击在未命中结算后自动触发（提示卡异步生成，不阻塞反击）
+        try {
+          const dbtn =
+            damageBtn?.get?.(0) || damageBtn?.[0] || card.find('[data-action="applyDamage"]').get(0);
+                    if (dbtn?.dataset?.attacker) {
+            ActorDamageHelper.tryCounterattack(
+              a,
+              dbtn.dataset.attacker,
+              dbtn.dataset.attackertoken || null,
+              dbtn,
+              { hit: false, damageDealt: false }
+            ).catch((err) => console.error("D35E | Counterattack(miss) failed", err));
+          }
+        } catch (err) {
+          /*忽略 */
+        }
         continue;
       }
       //2) 伤害检定：命中 →应用全伤（豁免结果不再影响伤害）
@@ -349,7 +365,7 @@ async function settleWithSave(card, saveBtn, srBtn, targets) {
 /**自动结算一张攻击/法术卡（入口；导出供测试） */
 export async function autoSettleCard(card) {
   const targets = getCardTargets(card);
-  if (!targets.length) return;
+    if (!targets.length) return;
   const saveButtons = card.find('[data-action="rollSave"]');
   const srBtn = card.find('[data-action="rollSR"]').first();
 
@@ -394,8 +410,8 @@ export function registerKeybindings() {
 export function registerAutoApplyHooks() {
   Hooks.on("renderChatMessage", async (message, html) => {
     try {
-      if (!game.settings.get("D35E", "autoApplyIntuitive")) return;
-      const card = html.find(".chat-card").first();
+            const card = html.find(".chat-card").first();
+            if (!game.settings.get("D35E", "autoApplyIntuitive")) return;
       if (!card.length) return;
       if (card.find('[data-action="applyDamage"]').length === 0 &&
           card.find('[data-action="rollSave"]').length === 0) return;

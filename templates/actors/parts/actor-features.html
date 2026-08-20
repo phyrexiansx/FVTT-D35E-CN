@@ -80,23 +80,7 @@
       </div>
       {{/if}}
     {{/if}}
-    {{#if section.isFeat}}
-      <ul class="attributes misc flexrow" style="flex:0">
 
-        {{#each ../counters.feat as |featcount ftc|}}
-        <li class="attribute high tooltip">
-          <h4 class="attribute-name box-title"><span style="text-transform: capitalize;">{{ftc}}</span> {{ localize 'D35E.FeatPool' }}</h4>
-          <div class="attribute-value">
-            <span>{{featcount.counted}}</span>
-          </div>
-
-            <footer class="attribute-footer">
-              <span>{{featcount.value}}</span>
-            </footer>
-        </li>
-        {{/each}}
-      </ul>
-    {{/if}}
     <ol class="inventory-list sub-scroll scroll-feats">
       <li class="inventory-header flexrow">
         <h3 class="item-name flexrow"></h3>
@@ -137,6 +121,55 @@
       </li>
 
       <ol class="item-list">
+        {{!-- 专长：按来源分类的文件夹（专长全部分类归组，item 列表留空） --}}
+        {{#if section.isFeat}}
+        {{#if section.canCreate}}
+        <li class="feature-folder-create-row flexrow" data-section="{{section.key}}">
+          <a class="feature-folder-create"><i class="fas fa-folder-plus"></i> {{ localize 'D35E.NewFeatureFolder' }}</a>
+        </li>
+        {{/if}}
+        {{#each section.folders as |folder fid|}}
+        <li class="feature-folder{{#if folder.collapsed}} collapsed{{/if}}" data-folder="{{folder.name}}" data-section="feat">
+          <div class="feature-folder-header flexrow">
+            <a class="feature-folder-toggle" title="展开/收起"><i class="fas {{#if folder.collapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}"></i></a>
+            <h4 class="feature-folder-name">{{folder.name}}</h4>
+            <span class="feature-folder-count">{{folder.items.length}}</span>
+            {{#if ../../owner}}
+            <a class="feature-folder-delete" title="{{ localize 'D35E.DeleteFeatureFolder' }}"><i class="fas fa-trash"></i></a>
+            {{/if}}
+          </div>
+          <ol class="feature-folder-items">
+            {{#each folder.items as |item iid|}}
+            {{> "systems/D35E/templates/actors/parts/actor-features-item.html" item=item iid=iid section=../../section owner=../../../owner}}
+            {{/each}}
+          </ol>
+        </li>
+        {{/each}}
+        {{/if}}
+        {{!-- 职业特性：按职业来源的文件夹（无来源的特性在下方 item 列表平铺） --}}
+        {{#if section.isClassFeat}}
+        {{#if section.canCreate}}
+        <li class="feature-folder-create-row flexrow" data-section="{{section.key}}">
+          <a class="feature-folder-create"><i class="fas fa-folder-plus"></i> {{ localize 'D35E.NewFeatureFolder' }}</a>
+        </li>
+        {{/if}}
+        {{#each section.folders as |folder fid|}}
+        <li class="feature-folder{{#if folder.collapsed}} collapsed{{/if}}" data-folder="{{folder.name}}" data-section="classFeat">
+          <div class="feature-folder-header flexrow">
+            <a class="feature-folder-toggle" title="展开/收起"><i class="fas {{#if folder.collapsed}}fa-caret-right{{else}}fa-caret-down{{/if}}"></i></a>
+            <h4 class="feature-folder-name">{{folder.name}}</h4>
+            {{#if ../../owner}}
+            <a class="feature-folder-delete" title="{{ localize 'D35E.DeleteFeatureFolder' }}"><i class="fas fa-trash"></i></a>
+            {{/if}}
+          </div>
+          <ol class="feature-folder-items">
+            {{#each folder.items as |item iid|}}
+            {{> "systems/D35E/templates/actors/parts/actor-features-item.html" item=item iid=iid section=../../section owner=../../../owner}}
+            {{/each}}
+          </ol>
+        </li>
+        {{/each}}
+        {{/if}}
         {{#each section.items as |item iid|}}
         <li class="item flexrow {{#unless isCharged}}uncharged{{/unless}}" data-item-id="{{item._id}}">
           {{#unless section.isClass}}

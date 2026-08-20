@@ -1,0 +1,115 @@
+{{!--
+  专长/职业特性/通用物品行（专长文件夹、特性文件夹与平铺区共用）
+  参数：item（物品）、section（所在分组）、owner（是否拥有者）
+--}}
+<li class="item flexrow {{#unless item.isCharged}}uncharged{{/unless}}" data-item-id="{{item._id}}">
+  <div class="item-name flexrow rollable">
+    <div class="item-image" style="background-image: url('{{item.img}}')"></div>
+    <h4>
+      {{item.name}}
+      {{#if item.system.abilityType}}
+      (<span style="text-transform: capitalize;">{{item.system.abilityType}}</span>)
+      {{/if}}
+
+      {{#if item.unmetRequirements}}
+        <i class="fas fa-tasks tooltip non-rollable" style="color: darkred">
+          <div class="tooltipcontent">{{{ localize 'D35E.HasUnmetRequirements' }}}
+
+            {{#each item.unmetRequirements as |req|}}
+            <p>{{req}}</p>
+            {{/each}}
+          </div>
+        </i>
+      {{/if}}
+
+      {{#if item.system.linkImported}}
+      <i class="fas fa-link non-rollable" style="color: black; opacity: 0.7">
+      </i>
+      <em style="color: black; opacity: 0.7" class="non-rollable">{{item.system.linkSourceName}}</em>
+      {{/if}}
+    </h4>
+
+  </div>
+
+  {{#if section.hasActions}}
+  <div class="item-detail item-actions">
+    <div class="item-attack">
+      {{#if item.hasAction}}
+      <a class="item-control item-attack"><img class="icon" src="systems/D35E/icons/actions/gladius.svg"></a>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="item-detail item-uses flexrow {{#if item.isCharged}}tooltip{{/if}}">
+    {{#if item.isCharged}}
+                {{#unless item.isRecharging}}
+                {{#unless item.system.linkedChargeItem.id}}
+                <input type="text" value="{{item.system.uses.value}}" data-dtype="Number" />
+                {{else}}
+                <input type="text" value="{{item.charges}}" disabled data-dtype="Number" />
+                {{/unless}}
+                <span class="sep"> of </span>
+                {{#unless item.system.linkedChargeItem.id}}
+                <input type="text" value="{{item.maxCharges}}" disabled data-dtype="Number" />
+                {{else}}
+                <input type="text" value="{{item.maxCharges}}" disabled data-dtype="Number" />
+
+                {{/unless}}
+                <span class="tooltipcontent">
+                    @resources.{{item.tag}}.value : {{item.system.uses.value}}<br>
+                    @resources.{{item.tag}}.max : {{item.system.uses.max}}
+                    {{#if item.hasTimedRecharge}}
+                    <br><br>
+                    This item will recharge after use <br>after {{item.system.recharge.formula}} rounds.
+                    {{/if}}
+                </span>
+                <i class="fas fa-history recharge-icon"></i>
+                {{else}}
+                <span><i class="fas fa-history"></i> Ready in {{item.system.recharge.current}}</span>
+                {{/unless}}
+                {{/if}}
+  </div>
+  <div class="item-detail item-usage">
+    {{#if item.system.activation.type }}
+    <span>{{item.labels.activation}}</span>
+    {{/if}}
+  </div>
+
+  {{#if section.isClassFeat}}
+  <div class="item-detail item-usage">
+  {{#if item.system.source}}
+     <em style="opacity: 0.8">{{item.system.source}}</em>
+  {{/if}}
+  </div>
+  {{/if}}
+  {{#if section.isFeat}}
+  <div class="item-detail item-usage">
+    <em style="opacity: 0.8">
+    {{#if item.system.source}}
+      {{item.system.source}}
+    {{else}}
+      {{#if item.system.classSource}}
+       {{item.system.classSource}}
+      {{else}}
+       {{ localize 'D35E.Base'}}
+      {{/if}}
+    {{/if}}
+    {{#if item.system.addedLevel}}
+      {{item.system.addedLevel}}
+    {{/if}}
+    </em>
+  </div>
+  {{/if}}
+  {{/if}}
+
+  {{#if owner}}
+  <div class="item-controls">
+    <a class="item-control item-edit" title="{{ localize 'D35E.EditItem' }}"><i class="fas fa-edit"></i></a>
+    {{#unless item.system.userNonRemovable}}
+    {{#unless item.system.linkImported}}
+      <a class="item-control item-delete" title="{{ localize 'D35E.DeleteItem' }}"><i class="fas fa-trash"></i></a>
+      {{/unless}}
+    {{/unless}}
+  </div>
+  {{/if}}
+</li>

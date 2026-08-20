@@ -738,9 +738,11 @@ export class ContestedRoll {
         let requests = message.getFlag("D35E", 'requests');
 
         const oldRoll = msgToken.roll;
+        // [D35E]oldRoll 为序列化 JSON（无 total getter）：先重建为 Roll 实例，best/worst 比较才有效
+        const oldRollObj = (oldRoll instanceof Roll) ? oldRoll : (() => { try { return Roll.fromJSON(oldRoll); } catch (e) { return null; } })();
         let keptRoll = roll;
-        if (keep === "best" && oldRoll.total > roll.total || keep === "worst" && oldRoll.total < roll.total) {
-            keptRoll = oldRoll;
+        if ((keep === "best" && oldRollObj && oldRollObj.total > roll.total) || (keep === "worst" && oldRollObj && oldRollObj.total < roll.total)) {
+            keptRoll = oldRollObj;
         }
 
         let dc = message.getFlag("D35E", 'dc');

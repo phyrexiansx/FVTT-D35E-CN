@@ -83,16 +83,16 @@ Hooks.once("init", () => {
     default: "systems/D35E/se/hit.wav",
   });
   game.settings.register("D35E", KEY.effect, {
-    name: "受击特效（染红+晃动）",
-    hint: "Token 受到伤害（HP 减少）时染红闪烁并晃动；与受击音效同一触发逻辑，音效随动画略微滞后播放。",
+    name: "受击特效",
+    hint: "Token 在受到伤害（HP 减少）时染红闪烁并晃动；与受击音效同一触发逻辑，音效随动画略微滞后播放；手动改血不触发。",
     scope: "world",
     config: true,
     type: Boolean,
     default: true,
   });
   game.settings.register("D35E", KEY.healEffect, {
-    name: "受治疗特效（绿色染纹理+闪白光）",
-    hint: "Token 恢复生命值（HP 增加，来自治疗结算）时纹理染绿并闪白光，不晃动；手动改血不触发。",
+    name: "受治疗特效",
+    hint: "Token 恢复生命值（HP 增加，来自治疗结算）时纹理染绿并闪白光；手动改血不触发。",
     scope: "world",
     config: true,
     type: Boolean,

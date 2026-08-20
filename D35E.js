@@ -10,7 +10,10 @@ import {registerSystemSettings} from './module/settings.js';
 import {registerAutoApplyHooks, registerKeybindings, actorHasNoAoO} from './module/automation/autoApply.js';
 import {registerChatViews} from './module/chatlog/chatTabs.js';
 import {registerChatViewKeybindings} from './module/chatlog/chatTabs.js';
-import {registerAoO, handleAoOThreat} from './module/automation/aoo.js';
+import {registerAoO, handleAoOThreat, getAoOAttacks} from './module/automation/aoo.js';
+import {registerChatDrag} from './module/chatlog/chatDrag.js';
+import { registerChatCommandSuggest } from './module/chatlog/chat-command-suggest.js'; // [D35E]聊天命令建议：输入 / 弹出 narrator 命令选项
+import {registerChatExport} from './module/chatlog/chatExport.js';
 import {registerCGMPFeatures} from './module/chatlog/cgmp-features.js';
 import {registerDiceTray} from './module/chatlog/dice-tray.js';
 import {preloadHandlebarsTemplates} from './module/templates.js';
@@ -116,6 +119,48 @@ import './module/target-lines.js'; //内置：锁定连线特效（目标连线�
 import './module/batch-attack.js'; //内置：批量攻击（GM 框选多 Token 勾选攻击与加值，对锁定目标批量投掷，角色间 200ms 队列；设置-功能-批量攻击宏 一键创建宏）
 import './module/monks-tokenbar/js/jquery.typeahead.min.js'; // monks-tokenbar 依赖（UMD→globalThis 适配）
 import './module/monks-tokenbar/monks-tokenbar.js'; // 内置 Monk's TokenBar（v11.14：D35E 原生适配，tokenbar 面板/锁定移动/群体检定/分配XP；socket 改用 socketlib registerSystem）
+import './module/mods/narrator-tools/context-menu.min.js'; // narrator-tools 依赖（右键菜单库，先于 narrator.js 加载）
+import './module/mods/narrator-tools/narrator.js'; // 内置 Narrator Tools（v0.79：旁白/描述/笔记聊天卡，/desc /narrat /not 命令）
+import './module/mods/storyteller/turn.min.js'; // storyteller 翻页库（$.fn.turn，先于 main.js 加载）
+import './module/mods/storyteller/main.js'; // 内置 Storyteller（v1.2.0：故事书式日志卡）
+
+// [D35E]内置模组资源清单（样式注入与语言合并共用；{ id: 目录名, styles: 相对 css 路径, langs: 可用语言文件名 }）
+const BUNDLED_MODS = [
+  { id: "narrator-tools", styles: ["narrator.css", "context-menu.min.css"], langs: ["cn", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt-BR", "ru", "th"] },
+  { id: "storyteller", styles: ["css/storyteller.css"], langs: ["en", "es", "ja", "zh-tw"] },
+];
+
+// [D35E]内置模组以模块 scope 读写 flags：内置后模组未启用，getFlag/setFlag/unsetFlag 会报
+// "Flag scope 无效"（如 narrator-tools 读取旁白消息类型），此处对内置模组的 scope 放行
+//（数据仍存 flags.<scope>，兼容旧数据；与 gm-screen 移除前相同的方案，改为通用）
+const BUNDLED_FLAG_SCOPES = ["narrator-tools", "storyteller"];
+
+/** 放行内置模组的 flags 读写（patch foundry.abstract.Document，幂等） */
+function _patchBundledFlagScopes() {
+  const DocProto = foundry.abstract.Document?.prototype;
+  if (!DocProto || DocProto._d35eBundledFlagPatched) return;
+  DocProto._d35eBundledFlagPatched = true;
+  const isBundled = (scope) => BUNDLED_FLAG_SCOPES.includes(scope) || scope === "D35E"; // [D35E]D35E 系统 scope 一并放行（原版 setFlag 的 flags 深合并偶发不生效）
+  const origGet = DocProto.getFlag;
+  const origSet = DocProto.setFlag;
+  const origUnset = DocProto.unsetFlag;
+  DocProto.getFlag = function (scope, key) {
+    if (isBundled(scope)) return getProperty(this.flags[scope] || {}, key);
+    return origGet.call(this, scope, key);
+  };
+  DocProto.setFlag = async function (scope, key, value) {
+    if (isBundled(scope)) {
+      // [D35E]点路径直接写嵌套字段：不依赖实例 flags 缓存，连续 setFlag 互不覆盖
+      return this.update({ [`flags.${scope}.${key}`]: value });
+    }
+    return origSet.call(this, scope, key);
+  };
+  DocProto.unsetFlag = async function (scope, key) {
+    if (isBundled(scope)) return this.update({ [`flags.${scope}.-=${key}`]: null });
+    return origUnset.call(this, scope, key);
+  };
+}
+
 
 // Add String.format
 if (!String.prototype.format) {
@@ -133,7 +178,36 @@ if (!String.prototype.format) {
 Hooks.once("init", async function () {
   console.log(`D35E | Initializing D35E System`);
 
+  // [D35E]内置模组资源加载：注入样式 + 合并语言（原模组语言文件不会自动加载）
+  // 清单：{ id: 目录名, styles: 相对 css 路径, langs: 可用语言文件名 }
+  const bundledMods = BUNDLED_MODS;
+  for (const mod of bundledMods) {
+    const modBase = `/systems/D35E/module/mods/${mod.id}/`;
+    // 样式：逐个注入 <link>
+    for (const style of mod.styles) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = modBase + style;
+      document.head.appendChild(link);
+    }
+    // 语言：优先当前语言，缺失时取清单第一个可用
+    // 语言回退：模组有当前语言才优先尝试（避免对不存在的语言文件发 404 请求），否则按清单顺序取第一个可用
+    const langCandidates = mod.langs.includes(game.i18n.lang) ? [game.i18n.lang, ...mod.langs.filter((l) => l !== game.i18n.lang)] : mod.langs;
+    for (const lang of langCandidates) {
+      try {
+        const langData = await fetch(modBase + `lang/${lang}.json`).then((r) => (r.ok ? r.json() : null));
+        if (langData) {
+          mergeObject(game.i18n.translations, langData);
+          break;
+        }
+      } catch (e) {
+        /* 单语言失败继续尝试下一个 */
+      }
+    }
+  }
+
   // CGMP 功能合并（发言锁定 / 聊天命令 / 输入通知 / NPC滚动数字）
+  _patchBundledFlagScopes(); // [D35E]内置模组 flags scope 放行（narrator-tools 等）
   registerCGMPFeatures();
   registerDiceTray();
 
@@ -350,7 +424,7 @@ Handlebars.registerHelper("ifeq", function (a, b, options) {
   $("body").toggleClass("color-blind", game.settings.get("D35E", "colorblindColors"));
   $("body").toggleClass("no-players-list", game.settings.get("D35E", "hidePlayersList"));
   EnrichersHelper.setupEnrichers();
-});
+  });
 
 /* -------------------------------------------- */
 /*  Foundry VTT Setup                           */
@@ -444,9 +518,46 @@ Hooks.once("setup", function () {
  * Once the entire VTT framework is initialized, check to see if we should perform a data migration
  */
 Hooks.once("ready", async function () {
+
+  // [D35E]内置模组语言兜底：init 阶段 fetch 偶发失败导致语言 key 未合并，ready 后重放（mergeObject 幂等）
+  for (const mod of BUNDLED_MODS) {
+    const modBase = `/systems/D35E/module/mods/${mod.id}/`;
+    const candidates = mod.langs.includes(game.i18n.lang) ? [game.i18n.lang, ...mod.langs.filter((l) => l !== game.i18n.lang)] : mod.langs;
+    for (const lang of candidates) {
+      try {
+        const langData = await fetch(modBase + `lang/${lang}.json`).then((r) => (r.ok ? r.json() : null));
+        if (langData) { mergeObject(game.i18n.translations, langData); break; }
+      } catch (e) { /* 单语言失败继续尝试下一个 */ }
+    }
+  }
+
+
+
+  // [D35E]预加载专长/特性物品行 partial（供专长/职业特性文件夹模板引用）
+  try {
+    await getTemplate("systems/D35E/templates/actors/parts/actor-features-item.html");
+  } catch (e) {
+    /* 模板加载失败不影响其余功能 */
+  }
   registerAutoApplyHooks();
   registerChatViews();
+  registerChatCommandSuggest(); // [D35E]聊天命令建议（输入 / 弹出 narrator 命令选项）
   registerAoO();
+  registerChatDrag();
+  registerChatExport(); // [D35E]聊天记录导出（GM）
+
+  // [D35E]玩家伴侣服务探测：未启动时提示（仅 GM，每会话一次）
+  if (game.user.isGM) {
+    const serverUrl = (game.settings.get("D35E", "companionServerUrl") || "").replace(/\/+$/, "");
+    if (serverUrl) {
+      try {
+        const res = await fetch(serverUrl + "/health", { signal: AbortSignal.timeout(1500) });
+        if (!res.ok) throw new Error("bad");
+      } catch (e) {
+        ui.notifications.warn("玩家伴侣服务未启动：请双击 companion-server\\start.bat 启动（或检查开机自启）。");
+      }
+    }
+  }
   $("body").toggleClass("d35gm", game.user.isGM);
   $("body").toggleClass("hide-special-action", !game.settings.get("D35E", "allowPlayersApplyActions"));
   $("body").toggleClass("transparent-sidebar", game.settings.get("D35E", "transparentSidebarWhenUsingTheme"));
@@ -1116,6 +1227,9 @@ Hooks.on("preUpdateToken", async (token, data, options, userId) => {
       const targetY = data.y ?? rawToken.y;
       // 位置未变化（如仅属性更新）→ 跳过
       if (targetX === rawToken.x && targetY === rawToken.y) return;
+      // [D35E]移动者隐藏或陷入无助 → 不触发借机（弹窗与聊天提示均不出现）
+      if (rawToken.document?.hidden) return;
+      if (rawToken.actor?.system?.attributes?.conditions?.helpless) return;
       // 移动前能威胁移动者的敌人（当前位置，placeable 判定）
       const wasThreatened = canvas.tokens.placeables.filter(
         (t) => t.id !== rawToken.id && DistanceHelper.isThreatened(t, rawToken)
@@ -1124,32 +1238,43 @@ Hooks.on("preUpdateToken", async (token, data, options, userId) => {
       const nowThreatened = canvas.tokens.placeables.filter(
         (t) => t.id !== rawToken.id && isPositionThreatenedBy(t, targetX, targetY, rawToken.w, rawToken.h)
       );
-      // 离开威胁区域：原位置被威胁、目标位置不再被威胁
-      const threateningTokens = wasThreatened.filter(
-        (t) => !nowThreatened.some((n) => n.id === t.id)
-      );
+      // [D35E]新借机规则：在触及内移动（移动起点被威胁）且单次移动≥10尺 → 触发；
+      // 不再要求"离开威胁区域"；威胁者 = 起点威胁者 ∪ 终点威胁者（起点必须已在触及内）
+      const movePx = Math.hypot(targetX - rawToken.x, targetY - rawToken.y);
+      const moveFeet = (movePx / canvas.dimensions.size) * canvas.dimensions.distance;
+      const threateningTokens = wasThreatened.length
+        ? Array.from(new Map([...wasThreatened, ...nowThreatened].map((t) => [t.id, t])).values())
+        : [];
+      const aoTrigger = threateningTokens.length > 0 && moveFeet >= 10;
       const result = Hooks.call("D35E.Threatened.tokenThreatened", rawToken, threateningTokens, game.user.id);
       if (result === false) return false;
       // [D35E]不会被借机：移动者拥有该能力 → 不弹借机窗口（聊天提示仍发送，改 blocked 文案）
       const moverNoAoO = actorHasNoAoO(rawToken.actor);
       // 借机只在战斗时生效：弹窗（PC → owner，NPC → GM）与聊天提示同受 game.combat 约束
       // 弹窗异常不影响下方聊天提示的发送
-      if (threateningTokens.length > 0 && game.combat && !moverNoAoO) {
+      if (aoTrigger && game.combat && !moverNoAoO) {
         try {
           handleAoOThreat(rawToken, threateningTokens);
         } catch (e) {
           console.error("D35E | AoO dialog failed", e);
         }
       }
-      // 聊天提示（含借机次数）仅战斗时保留
-      if (threateningTokens.length > 0 && game.combat) {
+      // 聊天提示（含借机次数）仅战斗时保留；[D35E]过滤无可用借机攻击的威胁者，全部无可借机则不显示
+      if (aoTrigger && game.combat) {
+        const aooEligible = threateningTokens.filter(
+          (t) =>
+            !t.document?.hidden &&
+            !t.actor?.system?.attributes?.conditions?.helpless &&
+            getAoOAttacks(t.actor).length > 0
+        );
+        if (!aooEligible.length) return;
         const content = await renderTemplate(
           "systems/D35E/templates/chat/aoo-notification.html",
           {
             moverImg: rawToken.document.texture?.src || "",
             moverName: rawToken.document.name,
             blocked: moverNoAoO,
-            threateningTokens: threateningTokens.map((t) => {
+            threateningTokens: aooEligible.map((t) => {
               const combatant = game.combat?.combatants?.find((c) => c.tokenId === t.id);
               const aooMax = combatant?.getFlag("D35E", "aaoCount") ?? 1;
               const aooUsed = combatant?.getFlag("D35E", "usedAaoCount") ?? 0;
