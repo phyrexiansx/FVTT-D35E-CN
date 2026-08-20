@@ -647,6 +647,15 @@ export const registerSystemSettings = function() {
     scope: 'client',
   });
 
+  game.settings.register("D35E", 'companionServerUrl', {
+    name: "SETTINGS.D35ECompanionServerUrlN",
+    hint: "SETTINGS.D35ECompanionServerUrlH",
+    default: "http://127.0.0.1:30001/",
+    type: String,
+    config: true,
+    scope: 'world',
+  });
+
   game.settings.register("D35E", "demoWorld", {
     name: "调试模式",
     hint: "启用一些调试时用得到的特殊功能，别在带团时启用它。",

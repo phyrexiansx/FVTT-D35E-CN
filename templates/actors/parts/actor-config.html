@@ -81,6 +81,14 @@
         </div>
     </div>
     <span style="flex: 0">此角色受到伤害时播放该音效；留空则使用系统默认音效。</span>
+    <div class="form-group">
+        <label>非致命受击音效</label>
+        <div class="form-fields">
+            <input type="text" name="flags.D35E.nonLethalSoundFile" value="{{flags.D35E.nonLethalSoundFile}}" placeholder="留空使用默认（hit-2.wav）" oncontextmenu="return true;" onkeydown="event.stopPropagation();" onpaste="event.stopPropagation();">
+            <button type="button" class="file-picker" data-d35e-nlfile title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-heartbeat"></i></button>
+        </div>
+    </div>
+    <span style="flex: 0">此角色受到非致命伤害时播放该音效；留空则使用系统默认。</span>
 
     <div class="form-group">
         <label>N20音效</label>

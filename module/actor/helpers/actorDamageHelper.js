@@ -354,9 +354,28 @@ export class ActorDamageHelper {
             // 本角色开启「阻止自动结算」→ 不自动生效
             if (actorHasIntuition(targetActor)) return;
             // 本角色带「反击」开关的攻击（attack 类）
-            const counterItems = (targetActor.items || []).filter(
+            let counterItems = (targetActor.items || []).filter(
                 (i) => i.type === "attack" && i.system?.counterattack === true
             );
+            // [D35E]多 Token 修正：反击发起者（受伤者）Token 白闪锁定——取来源攻击卡 data-target 第一个（提前取出供借机次数判断）
+            let selfTokenId = null;
+            try {
+                const tgtEl = card?.querySelector?.("[data-target]");
+                selfTokenId = tgtEl?.dataset?.target || null;
+            } catch (e2) {}
+            // [D35E]「需要借机攻击」：勾选的反击在战斗中只有借机攻击次数还有剩余时才反击（每次使用计入 1 次，rollAttack 内扣减）
+            if (counterItems.length) {
+                const combatant = game.combat && selfTokenId ? game.combat.combatants.find((c) => c.tokenId === selfTokenId) : null;
+                const aaoUsed = combatant ? combatant.getFlag("D35E", "usedAaoCount") || 0 : 0;
+                const aaoMax = combatant
+                    ? combatant.getFlag("D35E", "aaoCount") ?? targetActor.system?.attributes?.maxAoO ?? 1
+                    : 1;
+                counterItems = counterItems.filter((i) => {
+                    // 战斗中且借机次数已用完 → 不反击（非战斗不检查，借机次数是战斗概念）
+                    if (game.combat && i.system?.needsAoO === true && aaoUsed >= aaoMax) return false;
+                    return true;
+                });
+            }
             if (!counterItems.length) return;
             // [D35E]反击活动计数：全力攻击/批量攻击宏据此等待反击结算完成后再继续
             //（从此刻起计入活动窗口，含 150ms 延迟与全部反击攻击的使用）
@@ -377,12 +396,6 @@ export class ActorDamageHelper {
                 } catch (err) {
                     /* 目标锁定失败不阻断反击 */
                 }
-                // [D35E]多 Token 修正：反击发起者（受伤者）Token 白闪锁定——取来源攻击卡 data-target 第一个
-                let selfTokenId = null;
-                try {
-                    const tgtEl = card?.querySelector?.("[data-target]");
-                    selfTokenId = tgtEl?.dataset?.target || null;
-                } catch (e2) {}
                 // 依次自动使用（标记 _pendingCounterattack：useAttack 注入 counterattack=1 且按单次攻击掷骰）
                 _counterattackBusyUntil = Date.now() + _COUNTERATTACK_BUSY_MS;
                 for (const item of counterItems) {

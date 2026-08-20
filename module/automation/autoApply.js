@@ -4,7 +4,40 @@ import { ActorDamageHelper } from "../actor/helpers/actorDamageHelper.js";
 import { actorHasIntuition, targetAutoSettle, targetAutoSettleSave, targetAutoSettleSR } from "./intuitive.js";
 import { createCustomChatMessage } from "../chat.js";
 
-export { actorHasIntuition, targetNeedsManual, targetAutoSettle } from "./intuitive.js";
+export { actorHasIntuition, actorHasNoAoO, targetNeedsManual, targetAutoSettle } from "./intuitive.js";
+
+// ==================== [D35E]不会伤害友军 ====================
+// 阵营归一化（兼容旧中文/英文全称 → 英文简写）后比较：来源能力勾选 noFriendlyFire 且
+// 目标与来源阵营相同 → 自动结算跳过该目标（不造成伤害/不触发豁免）
+const _alignKey = (v) => {
+  const M = {
+    '守序善良': 'LG', '中立善良': 'NG', '混乱善良': 'CG', '守序中立': 'LN', '绝对中立': 'N',
+    '混乱中立': 'CN', '守序邪恶': 'LE', '中立邪恶': 'NE', '混乱邪恶': 'CE',
+    'Lawful Good': 'LG', 'Neutral Good': 'NG', 'Chaotic Good': 'CG', 'Lawful Neutral': 'LN', 'Neutral': 'N',
+    'Chaotic Neutral': 'CN', 'Lawful Evil': 'LE', 'Neutral Evil': 'NE', 'Chaotic Evil': 'CE',
+  };
+  const s = String(v || '').trim();
+  return M[s] || s;
+};
+function _noFriendlyFireSkip(card, targetActor) {
+  try {
+    if (!card || !targetActor) return false;
+    const sourceActorId = card.attr('data-actor-id');
+    const sourceItemId = card.attr('data-item-id');
+    if (!sourceActorId || !sourceItemId) return false;
+    const sourceActor = game.actors.get(sourceActorId);
+    const sourceItem = sourceItemId ? (sourceActor?.items.get(sourceItemId) || game.items.get(sourceItemId)) : null;
+    if (!sourceItem?.system?.noFriendlyFire) return false;
+    const sa = sourceActor?.system?.details?.alignment;
+    const ta = targetActor?.system?.details?.alignment;
+    if (!sa || !ta) return false;
+    const _r = _alignKey(sa) === _alignKey(ta);
+    return _r;
+  } catch (e) {
+    return false;
+  }
+}
+
 export { targetNeedsManualSave, targetAutoSettleSave } from "./intuitive.js";
 
 /**切换选中token的"阻止自动结算"状态（快捷键） */
@@ -13,6 +46,9 @@ export async function toggleIntuitiveForToken(token) {
   const actor = token.actor;
   const next = !actorHasIntuition(actor);
   await actor.setFlag("D35E", "intuitiveManual", next);
+  // [D35E]切换提示：告知当前token已阻止/允许快速结算
+  const feedbackKey = next ? "D35E.ToggleIntuitiveBlocked" : "D35E.ToggleIntuitiveAllowed";
+  ui.notifications.info(game.i18n.format(feedbackKey, { token: token.name }));
   //刷新token，重绘右下角状态图标（拥有者可见）
   try {
     token.draw();
@@ -255,6 +291,8 @@ async function settleWithSave(card, saveBtn, srBtn, targets) {
     // [D35E]R13：直接以 token 自身 actor 结算——unlinked（NPC 多 token）写各自 token 独立数据；linked 即角色卡本身
     const a = t.actor;
     if (!canSettleActor(a)) continue;
+    // [D35E]不会伤害友军：来源能力勾选且目标与来源阵营相同 → 跳过该目标
+    if (_noFriendlyFireSkip(card, a)) continue;
     const base = hpBaselines.get(t.id);
 
     if (hasAttackTotal) {
@@ -330,6 +368,8 @@ export async function autoSettleCard(card) {
       // [D35E]R13：直接以 token 自身 actor 结算（unlinked 独立 / linked 共享）
       const a = t.actor;
       if (!targetAutoSettle(a) || !canSettleActor(a)) continue;
+      // [D35E]不会伤害友军：目标与来源阵营相同 → 跳过该目标
+      if (_noFriendlyFireSkip(card, a)) continue;
       // [D35E]基线 = token 自身当前 HP（用户手动调整即改此值）
       const hp = a.system.attributes.hp;
       await applyDamageToTarget(a, $(btn), { half: false, hpBase: hp.value });

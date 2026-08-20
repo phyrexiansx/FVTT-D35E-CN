@@ -141,7 +141,19 @@
             <input type="text" name="system.details.gender" value="{{system.details.gender}}" placeholder="{{ localize 'D35E.Gender' }}" title="{{ localize 'D35E.Gender' }}"/>
           </li>
           <li>
-            <input type="text" name="system.details.alignment" value="{{system.details.alignment}}" placeholder="{{ localize 'D35E.Alignment' }}" title="{{ localize 'D35E.Alignment' }}"/>
+            <select name="system.details.alignment" title="{{ localize 'D35E.Alignment' }}">
+              {{#select (d35eAlignmentKey system.details.alignment)}}
+              <option value="LG">{{ localize "D35E.AlignmentLG" }}</option>
+              <option value="NG">{{ localize "D35E.AlignmentNG" }}</option>
+              <option value="CG">{{ localize "D35E.AlignmentCG" }}</option>
+              <option value="LN">{{ localize "D35E.AlignmentLN" }}</option>
+              <option value="N">{{ localize "D35E.AlignmentN" }}</option>
+              <option value="CN">{{ localize "D35E.AlignmentCN" }}</option>
+              <option value="LE">{{ localize "D35E.AlignmentLE" }}</option>
+              <option value="NE">{{ localize "D35E.AlignmentNE" }}</option>
+              <option value="CE">{{ localize "D35E.AlignmentCE" }}</option>
+              {{/select}}
+            </select>
           </li>
           <li>
             <input type="text" name="system.details.deity" value="{{system.details.deity}}" placeholder="{{ localize 'D35E.Deity' }}" title="{{ localize 'D35E.Deity' }}"/>
@@ -189,10 +201,17 @@
 
           <li>
            <span style="margin-left: 4px">{{system.attributes.speed.land.total}}{{ localize 'D35E.DistFtAbbr' }} ({{ localize 'D35E.SpeedLand' }}) </span>
+           <label class="checkbox" title="开启时此角色移动不会触发借机攻击" style="position: relative; display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; margin: 0 0 0 6px; vertical-align: middle; line-height: 18px;">
+             <input type="checkbox" class="stylized noaoo-toggle" {{checked noAoOEffective}}/>
+             <span class="checkmark"></span>
+           </label>
            <label class="checkbox" title="阻止此角色自动结算" style="position: relative; display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; margin: 0 0 0 6px; vertical-align: middle; line-height: 18px;">
              <input type="checkbox" class="stylized intuitive-toggle" {{checked intuitiveEffective}}/>
              <span class="checkmark"></span>
            </label>
+           {{#if intuitiveManualSet}}
+           <a class="intuitive-reset" title="清除手动设置，恢复跟随生效物品（按专长/状态/装备/武器的勾选判断）" style="margin: 0 2px 0 2px; line-height: 18px; font-size: 11px; color: #c55;"><i class="fas fa-undo"></i></a>
+           {{/if}}
            <i class="fas fa-info-circle" style="margin: 0 2px 0 0; color: lightgray; font-size: 12px; line-height: 18px; vertical-align: middle;" title="开启时此角色作为目标时不会自动结算效果"></i>
           </li>
         </ul>

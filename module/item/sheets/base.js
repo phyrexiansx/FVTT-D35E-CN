@@ -955,7 +955,7 @@ export class ItemSheetPF extends ItemSheet {
     // Create attack
     if (["weapon"].includes(this.item.type) && this.item.actor != null && !this.item.showUnidentifiedData) {
       const toggleString =
-        "<a style='color: white; text-decoration: none' class='header-button companion-view-button' title='" +
+        "<a style='color: white; text-decoration: none; flex: none;' class='companion-view-button' title='" +
         game.i18n.localize("D35E.CreateAttack") +
         "'><i class='fa fa-feather-alt'></i>" +
         game.i18n.localize("D35E.CreateAttack") +

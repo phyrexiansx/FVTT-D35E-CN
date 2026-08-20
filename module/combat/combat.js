@@ -50,6 +50,12 @@ export class CombatantD35E extends Combatant {
     }
   }
 
+  useMoveAction() {
+    // [D35E]移动动作判定：当前回合 Token 在己方回合内移动过 → 视为使用了移动动作
+    this.setFlag("D35E", "usedMoveAction", true);
+    this.update({});
+  }
+
   useFullAttackAction() {
     this.setFlag("D35E", "usedAttackAction", true);
     this.setFlag("D35E", "usedMoveAction", true);
@@ -243,7 +249,10 @@ export class CombatD35E extends Combat {
 
   async deleteEmbeddedDocuments(type, documents) {
     await super.deleteEmbeddedDocuments(type, documents);
-    Hooks.callAll("updateCombat", this, this.combatant);
+    // 手动触发 updateCombat 仅为通知监听方（如 D35E.js 的光环合并 debouncedCollate）。
+    // 必须传空 delta {}：删除 combatant 不改变 combat 文档本身；传 this.combatant 在删除
+    // 当前回合 combatant 时为 undefined，会令 monks-tokenbar 的 delta.round 读取崩溃。
+    Hooks.callAll("updateCombat", this, {});
     this.updateCombatCharacterSheet();
   }
 
@@ -544,3 +553,13 @@ export class CombatD35E extends Combat {
     }
   }
 }
+// [D35E]移动动作判定：当前回合 Combatant 的 Token 位置/尺寸变化 → 标记已使用移动动作
+Hooks.on("updateToken", (doc, change) => {
+  try {
+    if (!game.combat) return;
+    const combatant = game.combat.combatant;
+    if (!combatant || doc.id !== combatant.tokenId) return;
+    const moved = change.x !== undefined || change.y !== undefined || change.width !== undefined || change.height !== undefined;
+    if (moved && !combatant.usedMoveAction) combatant.useMoveAction();
+  } catch (e) {}
+});

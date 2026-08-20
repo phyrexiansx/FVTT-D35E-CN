@@ -182,6 +182,13 @@
                 <span class="checkmark"></span>
               </label>
             </div>
+        <div class="form-group">
+          <label>{{localize "D35E.NoFriendlyFire"}}</label>
+          <label class="checkbox" style="position: relative; flex: 0 20px">
+            <input type="checkbox" class="stylized" name="system.noFriendlyFire" {{checked data.system.noFriendlyFire}}/>
+            <span class="checkmark"></span>
+          </label>
+        </div>
 
             {{#if data.system.metamagic.enabled}}
               <div class="form-group">

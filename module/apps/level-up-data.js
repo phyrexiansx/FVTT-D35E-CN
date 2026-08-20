@@ -1,3 +1,5 @@
+import { CACHE } from "../cache.js";
+
 export class LevelUpDataDialog extends FormApplication {
   constructor(...args) {
     super(...args);
@@ -25,7 +27,7 @@ export class LevelUpDataDialog extends FormApplication {
     return this.options.name;
   }
 
-  getData() {
+  async getData() {
     let skillset = {};
     Object.keys(this.options.skillset.all.skills).forEach((s) => {
       skillset[s] = {
@@ -90,7 +92,59 @@ export class LevelUpDataDialog extends FormApplication {
       bonusSkillPoints: this.actor.system?.counters?.bonusSkillPoints?.value || 0,
       config: CONFIG.D35E,
     };
+
+    // [D35E]下一级职业能力预览（与职业等级页 progression 一致：物品能力 + 仅描述能力）
+    const targetLevel = data.level;
+    const selectedClass = classes.find((_c) => _c._id === this.levelUpData?.classId) || null;
+    const abilitiesMap = {};
+    for (const _c of classes) {
+      abilitiesMap[_c._id] = this._getNextLevelAbilities(_c, targetLevel);
+    }
+    data.hasSelectedClass = !!selectedClass;
+    data.nextLevelAbilities = selectedClass ? abilitiesMap[selectedClass._id] : { abilities: [], nonActive: [] };
+    data.classesAbilitiesJson = JSON.stringify(abilitiesMap).replace(/<\//g, "<\\/");
     return data;
+  }
+
+  /** 计算某职业第 level 级将获得的职业能力（对齐 item/sheets/base.js 的 progression 逻辑） */
+  _getNextLevelAbilities(classItem, level) {
+    const result = { abilities: [], nonActive: [] };
+    if (!classItem) return result;
+    const seen = new Set();
+    // 1) 职业能力包中关联该职业的能力（ClassFeatures）
+    for (const e of new Set(CACHE.ClassFeatures.get(classItem.name) || [])) {
+      const levels = (e.system?.associations?.classes || []).filter((el) => el[0] === classItem.name);
+      for (const _level of levels) {
+        if (parseInt(_level[1]) !== parseInt(level)) continue;
+        const disabled = (classItem.system.disabledAbilities || []).some(
+            (obj) => parseInt(obj.level || "0") === level && obj.uid === e.system.uniqueId);
+        if (disabled || seen.has(e._id)) continue;
+        seen.add(e._id);
+        result.abilities.push({
+          name: e.name,
+          img: e.img,
+          desc: e.system?.description?.value || "",
+        });
+      }
+    }
+    // 2) 手动添加的能力（addedAbilities）
+    for (const ability of classItem.system.addedAbilities || []) {
+      if (parseInt(ability.level) !== parseInt(level)) continue;
+      const e = CACHE.AllAbilities.get(ability.uid);
+      if (!e || seen.has(e._id)) continue;
+      seen.add(e._id);
+      result.abilities.push({
+        name: e.name,
+        img: e.img,
+        desc: e.system?.description?.value || "",
+      });
+    }
+    // 3) 仅描述能力（nonActiveClassAbilities：数组 [level, name, desc]）
+    for (const a of classItem.system.nonActiveClassAbilities || []) {
+      if (parseInt(a[0]) !== parseInt(level)) continue;
+      result.nonActive.push({ name: a[1], desc: a[2] || "" });
+    }
+    return result;
   }
 
   activateListeners(html) {

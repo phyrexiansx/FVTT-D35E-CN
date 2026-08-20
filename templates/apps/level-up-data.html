@@ -19,6 +19,36 @@
                 </select>
             </div>
       </div>
+    <h2 class="block-header">下一级职业能力（第 {{level}} 级）</h2>
+    <p></p>
+    <div class="flexcol" style="padding: 5px">
+        <ol id="next-level-abilities" class="next-level-abilities" style="list-style: none; margin: 0; padding: 0 4px; max-height: 200px; overflow-y: auto;">
+        {{#if hasSelectedClass}}
+            {{#if nextLevelAbilities.abilities.length}}
+                {{#each nextLevelAbilities.abilities}}
+                <li class="next-level-ability" style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">
+                    <img src="{{this.img}}" style="width: 24px; height: 24px; border: none; flex: 0 0 24px;"/>
+                    <span style="font-size: 12px;" title="{{this.desc}}">{{this.name}}</span>
+                </li>
+                {{/each}}
+            {{/if}}
+            {{#if nextLevelAbilities.nonActive.length}}
+                {{#each nextLevelAbilities.nonActive}}
+                <li class="next-level-ability next-level-desc" style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">
+                    <span style="font-size: 12px; font-style: italic; color: #555;" title="{{this.desc}}">{{this.name}}</span>
+                </li>
+                {{/each}}
+            {{/if}}
+            {{#unless nextLevelAbilities.abilities.length}}
+            {{#unless nextLevelAbilities.nonActive.length}}
+                <li class="next-level-empty" style="color: #888; font-style: italic; padding: 4px 0;">该等级无新增职业能力</li>
+            {{/unless}}
+            {{/unless}}
+        {{else}}
+            <li class="next-level-empty" style="color: #888; font-style: italic; padding: 4px 0;">选择职业后预览该级新增的职业能力</li>
+        {{/if}}
+        </ol>
+    </div>
     <h2 class="block-header">{{localize "D35E.HitPoints"}}</h2>
     <p></p>
     <div class="flexcol" style="padding: 5px">
@@ -120,6 +150,7 @@
             if (!force) $('.skill-value').val(0)
             if (!force) rollHP();
             updateFormData()
+            renderNextLevelAbilities()
         }
 
         function updateFormData() {
@@ -166,6 +197,38 @@
             $('#skill-per-level').text(spl)
             $('#skill-used').text(`${usedSkillpoints} / ${spl}`)
             $('#class-hd').text(`${hd}`)
+        }
+
+        function escHtml(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        function renderNextLevelAbilities() {
+            const classId = $('option:selected', $('#class-select')).val();
+            const map = {{{classesAbilitiesJson}}};
+            const data = classId ? map[classId] : null;
+            const container = $('#next-level-abilities');
+            if (!data) {
+                container.html('<li class="next-level-empty" style="color: #888; font-style: italic; padding: 4px 0;">选择职业后预览该级新增的职业能力</li>');
+                return;
+            }
+            const abilities = data.abilities || [];
+            const nonActive = data.nonActive || [];
+            if (!abilities.length && !nonActive.length) {
+                container.html('<li class="next-level-empty" style="color: #888; font-style: italic; padding: 4px 0;">该等级无新增职业能力</li>');
+                return;
+            }
+            let html = '';
+            for (const ab of abilities) {
+                html += '<li class="next-level-ability" style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">'
+                    + '<img src="' + escHtml(ab.img) + '" style="width: 24px; height: 24px; border: none; flex: 0 0 24px;">'
+                    + '<span style="font-size: 12px;" title="' + escHtml(ab.desc) + '">' + escHtml(ab.name) + '</span></li>';
+            }
+            for (const na of nonActive) {
+                html += '<li class="next-level-ability next-level-desc" style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">'
+                    + '<span style="font-size: 12px; font-style: italic; color: #555;" title="' + escHtml(na.desc) + '">' + escHtml(na.name) + '</span></li>';
+            }
+            container.html(html);
         }
 
         function addRemoveSkill(id, value, classSkill) {
@@ -239,6 +302,7 @@
 
         selectedClassData($('#class-select'), true);
         updateFormData();
+        renderNextLevelAbilities();
 
 
     </script>

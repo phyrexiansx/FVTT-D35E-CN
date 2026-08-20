@@ -1,12 +1,12 @@
 export class ActiveEffectD35E extends ActiveEffect {
     async create(data, context) {
-      const statusId = this["flags.core.statusId"],
+      const statusId = this.statuses.size ? [...this.statuses][0] : null,
         origin = this.origin,
         updates = {};
       if (statusId && this.parent?.system.attributes.conditions[statusId] === false) {
         updates[`data.attributes.conditions.${statusId}`] = true;
         await this.parent.update(updates);
-        let created = this.parent.effects.find((e) => e.getFlag("core", "statusId") === statusId);
+        let created = this.parent.effects.find((e) => e.statuses.has(statusId));
         if (created) return created;
       }
       if (origin) {
@@ -17,7 +17,7 @@ export class ActiveEffectD35E extends ActiveEffect {
     }
   
     async delete(context) {
-      const statusId = this.getFlag("core", "statusId"),
+      const statusId = this.statuses.size ? [...this.statuses][0] : null,
         origin = this.origin?.split(".")?.[3] ?? null,
         parentActor = this.parent,
         returnVal = await super.delete(context),
@@ -31,6 +31,6 @@ export class ActiveEffectD35E extends ActiveEffect {
   
     get isTemporary() {
       const duration = this?.duration?.seconds ?? (this?.duration?.rounds || this?.duration?.turns) ?? 0;
-      return duration > 0 || this.getFlag("core", "statusId") || this.getFlag("D35E", "show");
+      return duration > 0 || this.statuses.size > 0 || this.getFlag("D35E", "show");
     }
   }

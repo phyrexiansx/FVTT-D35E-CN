@@ -45,24 +45,24 @@ export class ActorConditions {
 
             // Create and delete condition ActiveEffects
             for (let k of Object.keys(CONFIG.D35E.conditions)) {
-                const idx = fx.findIndex((e) => e.getFlag("core", "statusId") === k);
+                const idx = fx.findIndex((e) => e.statuses.has(k));
                 const hasCondition = actor.data.data.attributes.conditions[k] === true;
                 const hasEffectIcon = idx >= 0;
                 const obj = t.object ?? t;
 
                 if (hasCondition && !hasEffectIcon) {
                     toCreate.push({
-                        "flags.core.statusId": k,
+                        "statuses": [k],
                         name: CONFIG.D35E.conditions[k],
                         label: CONFIG.D35E.conditions[k],
                         icon: CONFIG.D35E.conditionTextures[k],
                     });
                 } else if (!hasCondition && hasEffectIcon) {
-                    const removeEffects = fx.filter((e) => e.getFlag("core", "statusId") === k);
+                    const removeEffects = fx.filter((e) => e.statuses.has(k));
                     toDelete.push(...removeEffects.map((e) => e.id));
                 }
                 if (hasEffectIcon) {
-                    const removeEffects = fx.filter((e) => e.getFlag("core", "statusId") === k);
+                    const removeEffects = fx.filter((e) => e.statuses.has(k));
                     brokenEffects.delete(...removeEffects.map((e) => e.id))
                 }
             }

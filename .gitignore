@@ -22,3 +22,5 @@ node_modules/
 
 # Foundry 自动备份
 backup_*/
+备份/
+packs/*/lost/

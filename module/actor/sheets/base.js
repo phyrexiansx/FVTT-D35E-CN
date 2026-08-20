@@ -25,7 +25,7 @@ import { ContainerApplication } from "../../item/container-sheet.js";
 import { ItemDrawerHelper } from "./helpers/itemDrawerHelper.js";
 import {CompendiumBrowser} from '../../apps/compendium-browser.js';
 import {ItemEquipHook} from '../../item/hooks/itemEquipHook.js';
-import {actorHasIntuition} from "../../automation/autoApply.js";
+import {actorHasIntuition, actorHasNoAoO} from "../../automation/autoApply.js";
 
 /**
  * Extend the basic ActorSheet class to do all the PF things!
@@ -123,6 +123,10 @@ export class ActorSheetPF extends ActorSheet {
     // 直觉能力（战斗页标签）
     sheetData.intuitiveEffective = actorHasIntuition(this.actor);
     sheetData.intuitiveManual = this.actor.getFlag("D35E", "intuitiveManual");
+    // [D35E]是否设置了手动覆盖（供「恢复跟随生效物品」重置按钮显隐）
+    sheetData.intuitiveManualSet = this.actor.getFlag("D35E", "intuitiveManual") !== undefined;
+    // [D35E]不会被借机（战斗页标签开关）
+    sheetData.noAoOEffective = actorHasNoAoO(this.actor);
     // The Actor and its Items
     sheetData.actor = this.actor.data.toObject(false);
     sheetData.items = sheetData.actor.items.map((i) => {
@@ -877,7 +881,11 @@ export class ActorSheetPF extends ActorSheet {
       await this.actor.setFlag("D35E", "intuitiveManual", ev.currentTarget.checked);
       this.render(false);
     });
-    html.find(".intuitive-reset").click(async (ev) => {
+    html.find(".noaoo-toggle").change(async (ev) => {
+      await this.actor.setFlag("D35E", "noAoO", ev.currentTarget.checked);
+      this.render(false);
+    });
+        html.find(".intuitive-reset").click(async (ev) => {
       await this.actor.unsetFlag("D35E", "intuitiveManual");
       this.render(false);
     });
@@ -1086,9 +1094,9 @@ export class ActorSheetPF extends ActorSheet {
 
     if (this.actor.system.companionPublicId) {
       const toggleString =
-        "<a style='color: white; text-decoration: none' href='https://companion.legaciesofthedragon.com/character/public/" +
+        "<a style='color: white; text-decoration: none; flex: none;' href='" + this.actor.API_URI + "/character/public/" +
         this.actor.system.companionPublicId +
-        "' class='header-button companion-view-button' title='" +
+        "' class='companion-view-button' title='" +
         game.i18n.localize("D35E.DisplayInCompanion") +
         "'><i class='fa fa-user'></i>" +
         game.i18n.localize("D35E.DisplayInCompanion") +
@@ -1099,9 +1107,9 @@ export class ActorSheetPF extends ActorSheet {
       toggleButton.insertAfter(titleElement);
     } else if (this.actor.system.companionUuid) {
       const toggleString =
-        "<a style='color: white; text-decoration: none' href='https://companion.legaciesofthedragon.com/character/" +
+        "<a style='color: white; text-decoration: none; flex: none;' href='" + this.actor.API_URI + "/character/" +
         this.actor.system.companionUuid +
-        "' class='header-button companion-view-button' title='" +
+        "' class='companion-view-button' title='" +
         game.i18n.localize("D35E.DisplayInCompanion") +
         "'><i class='fa fa-user'></i>" +
         game.i18n.localize("D35E.DisplayInCompanion") +
@@ -1721,7 +1729,7 @@ export class ActorSheetPF extends ActorSheet {
     this.actor.items.forEach((i) => {
       if (i.system.containerId && i.system.containerId !== "none") {
         itemUpdates.push({
-          _id: i._id,
+          _id: i.id || i._id,
           "system.containerId": "none",
           "system.container": "None",
           "system.containerWeightless": false,
@@ -1731,25 +1739,51 @@ export class ActorSheetPF extends ActorSheet {
     if (itemUpdates.length) {
       await this.actor.updateOwnedItem(itemUpdates, { stopUpdates: true });
       this.render(false);
+      ui.notifications.info(
+        game.i18n.localize("D35E.FixContainersDone").format(itemUpdates.length)
+      );
+    } else {
+      ui.notifications.info(game.i18n.localize("D35E.FixContainersNone"));
     }
   }
 
   async _onCharacterCheckUpdates(event) {
     event.preventDefault();
     let itemUpdates = [];
+    let checked = 0;
+    let updatesFound = 0;
     for (let item of this.actor.items) {
-      if (item.system.originVersion && item.system.originPack && item.system.originId) {
-        let compendiumItem = await game.packs.get(item.system.originPack).getDocument(item.system.originId);
-        if (!compendiumItem) {
-          game.D35E.logger.log("Item missing from compendium...");
-        } else {
-          if (compendiumItem.system.originVersion > item.system.originVersion)
-            itemUpdates.push({ _id: item.id, "system.possibleUpdate": true });
-          else itemUpdates.push({ _id: item.id, "system.possibleUpdate": false });
-        }
+      // 只要物品记录了来源合集就参与检查（originVersion 可能为 0，不能作为跳过条件）
+      if (!item.system.originPack || !item.system.originId) continue;
+      const pack = game.packs.get(item.system.originPack);
+      if (!pack) continue;
+      checked++;
+      const localVersion = Number(item.system.originVersion) || 0;
+      let compendiumItem = null;
+      try {
+        compendiumItem = await pack.getDocument(item.system.originId);
+      } catch (err) {
+        game.D35E.logger.log("Item check failed for " + item.name, err);
+      }
+      if (!compendiumItem) {
+        game.D35E.logger.log("Item missing from compendium...");
+        continue;
+      }
+      const compendiumVersion = Number(compendiumItem.system.originVersion) || 0;
+      if (compendiumVersion > localVersion) {
+        itemUpdates.push({ _id: item.id, "system.possibleUpdate": true });
+        updatesFound++;
+      } else {
+        itemUpdates.push({ _id: item.id, "system.possibleUpdate": false });
       }
     }
-    await this.actor.updateOwnedItem(itemUpdates, { stopUpdates: true });
+    if (itemUpdates.length) {
+      await this.actor.updateOwnedItem(itemUpdates, { stopUpdates: true });
+    }
+    this.render(false);
+    ui.notifications.info(
+      game.i18n.localize("D35E.CheckUpdatesDone").format(checked, updatesFound)
+    );
   }
 
   async _quickChangeItemQuantity(event, add = 1) {
@@ -3821,9 +3855,9 @@ export class ActorSheetPF extends ActorSheet {
     });
   }
 
-  _onCharacterGenerateStatblock(event) {
+  async _onCharacterGenerateStatblock(event) {
     event.preventDefault();
-    StatblockGenerator.generateStatblock(this.actor);
+    await StatblockGenerator.generateStatblock(this.actor);
   }
 
 

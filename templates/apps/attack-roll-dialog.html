@@ -283,7 +283,7 @@
     {{#if isRangedWeapon}}
     <div class="form-group select">
         <label>{{localize "D35E.LootTypeAmmo"}} <i class="fas fa-history tooltip" style="color: lightgray;"><span class="tooltipcontent">{{localize "D35E.ValuePersisted"}}</span></i></label>
-        <select name="ammunition-id" onchange="enableDisableFullAttack(this)" class="auto-save">
+        <select name="ammunition-id" onchange="enableDisableFullAttack(this)">
             {{#select ammo}}
                 {{#if allowNoAmmo}}
                 <option value="none" data-ammo-count="9999" data-dmg-formula="">Default Unlimited Ammo</option>

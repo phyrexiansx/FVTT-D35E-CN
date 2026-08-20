@@ -8,6 +8,7 @@ export class ItemActiveHelper {
       item.type === "feat" ||
       item.type === "race" ||
       item.type === "class" ||
+      item.type === "weapon" ||
       ((item.type === "aura" || item.type === "buff") && getProperty(item.system, "active")) ||
       (item.type === "equipment" &&
         getProperty(item.system, "equipped") === true &&

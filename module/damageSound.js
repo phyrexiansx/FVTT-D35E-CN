@@ -27,6 +27,9 @@ const KEY = {
   natVolume: "natSoundVolume",
   natFile20: "natSoundFile20",
   natFile1: "natSoundFile1",
+  nlEnable: "nonLethalHitEnabled",
+  nlVolume: "nonLethalHitVolume",
+  nlFile: "nonLethalHitFile",
 };
 
 // 受击特效参数：染红时长 / 晃动时长 / 音效相对动画的延迟
@@ -130,6 +133,32 @@ Hooks.once("init", () => {
     filePicker: "audio",
     default: "systems/D35E/se/N1.ogg",
   });
+  game.settings.register("D35E", KEY.nlEnable, {
+    name: "非致命受击特效/音效",
+    hint: "受到非致命伤害（HP 不变、非致命值增加）时 Token 短暂染黄并播放受击音效（默认 hit-2.wav）。",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+  game.settings.register("D35E", KEY.nlVolume, {
+    name: "非致命受击音效音量",
+    hint: "0 到 1 之间。",
+    scope: "world",
+    config: true,
+    type: Number,
+    range: { min: 0, max: 1, step: 0.05 },
+    default: 1.0,
+  });
+  game.settings.register("D35E", KEY.nlFile, {
+    name: "非致命受击音效文件（默认）",
+    hint: "未单独设置音效的角色受非致命伤害时使用该音频。默认 systems/D35E/se/hit-2.wav。",
+    scope: "world",
+    config: true,
+    type: String,
+    filePicker: "audio",
+    default: "systems/D35E/se/hit-2.wav",
+  });
 });
 
 // ==================== 统一特效状态管理器（染红/染绿/白闪共享） ====================
@@ -207,6 +236,26 @@ function _flashRed(token) {
   }
 }
 
+// [D35E]染黄：非致命伤害施加时 Token 纹理短暂染黄后恢复（与染红/染绿同一特效状态管理器逻辑）
+function _flashYellow(token) {
+  try {
+    if (!token || token.destroyed || !token.mesh) return;
+    const fx = fxBegin(token);
+    if (!fx) return;
+    token.mesh.tint = 0xffff00; // 染黄 token 纹理
+    fxEnd(token, HIT_EFFECT.flashDuration);
+  } catch (e) {}
+}
+
+// [D35E]非致命受击特效：染黄（不晃动；行走图受击图片由 walk-animation 的 hitSound 通道自动触发）
+function _playNonLethalEffect(actor, tokenId) {
+  if (!game.settings.get("D35E", KEY.nlEnable)) return;
+  _getHitTokens(actor, tokenId).forEach((t) => {
+    _flashYellow(t);
+    _shakeToken(t); // [D35E]非致命受击也晃动（与致命伤害一致）
+  });
+}
+
 // 晃动：Token 网格做带衰减的正弦抖动，结束后归位（不改变实际位置）
 function _shakeToken(token) {
   const mesh = token.mesh;
@@ -219,6 +268,7 @@ function _shakeToken(token) {
   token._d35eShakeUntil = Date.now() + dur + 60;
   const start = performance.now();
   const tick = () => {
+    if (token.destroyed || !token.mesh) return; // [D35E]token 销毁（场景清理等）后停止晃动动画帧
     const t = (performance.now() - start) / dur;
     if (t >= 1) {
       mesh.x = ox;
@@ -305,6 +355,7 @@ Hooks.on("preUpdateActor", (actor, change, options) => {
     _hpBefore.set(_hpKey(actor), {
       v: actor.system.attributes.hp.value,
       t: actor.system.attributes.hp.temp,
+      n: actor.system.attributes.hp.nonlethal || 0, // [D35E]非致命：记录前值用于染黄判定
     });
   }
 });
@@ -330,6 +381,23 @@ Hooks.on("updateActor", (actor, change, options) => {
         type: CONST.CHAT_MESSAGE_TYPES.OOC,
         flags: { D35E: { healEffect: actor.id, hitTokenId } },
       });
+    }
+    return;
+  }
+  // [D35E]非致命伤害：HP 未减少但非致命值增加 → 染黄 + 非致命音效（不走染红/常规受击音效）
+  const nonLethalDelta = (actor.system.attributes.hp.nonlethal || 0) - (before.n || 0);
+  if (nonLethalDelta > 0 && totalAfter >= totalBefore) {
+    _playNonLethalEffect(actor, hitTokenId);
+    const nlSrc = actor.getFlag("D35E", "nonLethalSoundFile") || game.settings.get("D35E", KEY.nlFile);
+    setTimeout(() => AudioHelper.play({ src: nlSrc, volume: game.settings.get("D35E", KEY.nlVolume) }, false), HIT_EFFECT.soundDelay);
+    const recipients = game.users.filter((u) => u.active && !u.isSelf).map((u) => u.id);
+    if (recipients.length) {
+      ChatMessage.create({
+        content: "",
+        whisper: recipients,
+        type: CONST.CHAT_MESSAGE_TYPES.OOC,
+        flags: { D35E: { hitSound: nlSrc, hitActorId: actor.id, hitTokenId, hitNonLethal: true } },
+      }).catch(() => {});
     }
     return;
   }
@@ -385,9 +453,18 @@ Hooks.on("createChatMessage", (message) => {
   const hitTokenId = message.getFlag("D35E", "hitTokenId");
   if (actorId) {
     const actor = game.actors.get(actorId);
-    if (actor) _playHitEffect(actor, hitTokenId);
+    if (!actor) return;
+    // [D35E]非致命伤害通知：远端染黄 + 非致命音效（音量用非致命音量；不走染红）
+    if (message.getFlag("D35E", "hitNonLethal")) {
+      if (game.settings.get("D35E", KEY.nlEnable)) _playNonLethalEffect(actor, hitTokenId);
+      setTimeout(() => AudioHelper.play({ src, volume: game.settings.get("D35E", KEY.nlVolume) }, false), HIT_EFFECT.soundDelay);
+    } else {
+      _playHitEffect(actor, hitTokenId);
+      setTimeout(() => _play(src), HIT_EFFECT.soundDelay);
+    }
+  } else {
+    setTimeout(() => _play(src), HIT_EFFECT.soundDelay);
   }
-  setTimeout(() => _play(src), HIT_EFFECT.soundDelay);
   if (game.user.isGM) setTimeout(() => message.delete().catch(() => {}), 1000);
 });
 
@@ -447,6 +524,7 @@ Hooks.on("renderActorSheet", (app, html) => {
     html.find('input[name="flags.D35E.' + name + '"]').val(app.actor.getFlag("D35E", key) || "");
   };
   fill("hitSoundFile", "hitSoundFile");
+  fill("nonLethalSoundFile", "nonLethalSoundFile");
   fill("n20SoundFile", "n20SoundFile");
   fill("n1SoundFile", "n1SoundFile");
 

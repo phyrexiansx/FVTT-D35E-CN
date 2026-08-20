@@ -39,8 +39,10 @@ import {targetAutoSettleCheck, getRollAdvantageMode} from '../automation/intuiti
 export class ActorPF extends Actor {
   /* -------------------------------------------- */
   static LOG_V10_COMPATIBILITY_WARNINGS = false;
-  API_URI = "https://companion.legaciesofthedragon.com/";
-  //API_URI = 'http://localhost:5000';
+  // API_URI 参数化：优先读取世界设置 D35E.companionServerUrl（本地伴侣服务）
+  get API_URI() {
+    return (game.settings?.get('D35E', 'companionServerUrl') || "https://companion.legaciesofthedragon.com/").replace(/\/+$/, "");
+  }  //API_URI = 'http://localhost:5000';
   static SPELL_AUTO_HIT = -1337;
   socketRoomConnected = false;
   socket = null;
@@ -1160,6 +1162,10 @@ export class ActorPF extends Actor {
         item.system.weaponSubtype === 'ranged' || item.system.properties.thr
             ? 'rwak'
             : 'mwak';
+    // [D35E]远程攻击默认不勾选「可借机攻击」（近战保留模板默认可借机）
+    if (attackData['system.actionType'] === 'rwak') {
+      attackData['system.attackAoO'] = false;
+    }
     attackData['system.activation.type'] = 'attack';
     attackData['system.duration.units'] = 'inst';
     attackData['system.finesseable'] = item.system.properties.fin || false;
@@ -2564,6 +2570,11 @@ export class ActorPF extends Actor {
     // [D35E]优势/劣势（Alt/Ctrl 修饰键 > 变化效果标签 > 普通）；对话框 radio 在 _roll 内覆盖
     const _skillAdvMode = options?.event?.altKey ? 1 : (options?.event?.ctrlKey ? -1 : getRollAdvantageMode(this));
     const _skillFormula = _skillAdvMode === 1 ? '2d20kh' : (_skillAdvMode === -1 ? '2d20kl' : '1d20');
+    // [D35E]远程操作：跳过对话框直接检定（含被动combat changes）
+    if (options.skipDialog) {
+      return _roll.call(this, options.target, null, props, sklName, _skillFormula,
+          sourceChangesSkillId, options.rollMode || 'publicroll');
+    }
     const buttons = {};
     let wasRolled = false;
     buttons.takeTen = {
@@ -5407,8 +5418,22 @@ export class ActorPF extends Actor {
   async _updateMinions(options = {}) {
     if (options.skipMinions || options.stopUpdates) return;
 
+    // [D35E]追随者（有主人）自身刷新：读取主人的追随者等级同步自身，
+    // 避免用自身（随从职业被过滤后为空的）minionClassLevels 把追随者职业清零；
+    // 主人不可见/未加载时不动，等主人刷新时再统一同步
+    const ownMasterId = this.system?.master?.id;
+    if (ownMasterId) {
+      const ownMaster = game.actors.get(ownMasterId);
+      if (!ownMaster) return;
+      const ownMasterRoll = ownMaster.getRollData(null, true); // 强制重算，避免旧缓存
+      const ownMasterLevels = ownMasterRoll.attributes?.minionClassLevels || {};
+      await this._syncMinionClass(this, ownMasterLevels)
+          .catch((e) => LogHelper.error('Minion class sync failed', e));
+      return;
+    }
+
     const master = this;
-    const rollData = master.getRollData();            // 只算一次
+    const rollData = master.getRollData(null, true); // 强制重算：同步必须用最新追随者等级（_cachedRollData 此时可能还是旧值）
     const minionLevels = rollData.attributes?.minionClassLevels || {};
 
     const updates = [];
@@ -5792,39 +5817,35 @@ export class ActorPF extends Actor {
         'companionUsePersonalKey')) apiKey = game.settings.get('D35E',
         'apiKeyPersonal');
     if (!apiKey) return;
-    let that = this;
-    $.ajax({
-      url: `${this.API_URI}/api/character/${this.system.companionUuid}`,
-      type: 'PUT',
-      headers: {'API-KEY': apiKey},
-      crossDomain: true,
-      dataType: 'json',
-      contentType: 'application/json; charset=utf-8',
-      data: JSON.stringify(this.data),
-      success: function(data) {
-        if (manual) {
+    // [D35E]本地伴侣：改用 fetch（$.ajax 与 async 返回值不兼容）
+    try {
+      const response = await fetch(
+          `${this.API_URI}/api/character/${this.system.companionUuid}`, {
+        method: 'PUT',
+        headers: {'API-KEY': apiKey, 'Content-Type': 'application/json'},
+        body: JSON.stringify(this.toObject()),
+      });
+      if (manual) {
+        if (response.ok) {
           ui.notifications.info(
-              game.i18n.localize('D35E.NotificationSyncSuccessfull').
-                  format(that.data.name));
-        }
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        //LogHelper.log(textStatus)
-        if (manual) {
+              game.i18n.localize('D35E.NotificationSyncSuccessfull').format(this.name));
+        } else {
           ui.notifications.error(
-              game.i18n.localize('D35E.NotificationSyncError').
-                  format(that.data.name));
+              game.i18n.localize('D35E.NotificationSyncError').format(this.name));
         }
-      },
-    });
+      }
+    } catch (err) {
+      if (manual) ui.notifications.error(
+          game.i18n.localize('D35E.NotificationSyncError').format(this.name));
+    }
   }
 
   get canAskForRequest() {
     if (!getProperty(this.system, 'companionUuid')) return false;
 
     let userWithCharacterIsActive = game.users.players.some(
-        (u) => u.active && u.data.character === this.id);
-    let isMyCharacter = game.users.current.data.character === this.id;
+        (u) => u.active && (u.character?.id === this.id));
+    let isMyCharacter = game.user.character?.id === this.id;
     // It is not ours character and user that has this character is active - so better direct commands to his/her account
     if (!isMyCharacter && userWithCharacterIsActive) return false;
 
@@ -5845,15 +5866,25 @@ export class ActorPF extends Actor {
 
   connectToCompanionSocket() {
     if (!this.canAskForRequest) return;
-    this.socket = io(`${this.API_URI}`);
-    this.socket.on('foundry', (data) => {
-      game.D35E.logger.log('Received foundry message', data);
-      this.socket.emit('processed', {
-        actionId: data['actionId'],
-        room: getProperty(this.system, 'companionUuid'),
+    if (this.socket) return; //已连接则不再重复连接
+    try {
+      this.socket = io(`${this.API_URI}`);
+      this.socket.on('foundry', (data) => {
+        game.D35E.logger.log('Received foundry message', data);
+        this.socket.emit('processed', {
+          actionId: data['actionId'],
+          room: getProperty(this.system, 'companionUuid'),
+        });
+        this.executeRemoteAction(data);
       });
-      this.executeRemoteAction(data);
-    });
+      this.socket.on('disconnect', () => {
+        this.socket = null;
+        this.socketRoomConnected = false;
+      });
+    } catch (err) {
+      game.D35E.logger.log('Companion socket connect failed', err);
+      this.socket = null;
+    }
   }
 
   connectToCompanionCharacterRoom() {
@@ -5864,9 +5895,17 @@ export class ActorPF extends Actor {
       room: getProperty(this.system, 'companionUuid'),
     });
     this.socketRoomConnected = true;
+    // [D35E]本地伴侣：轮询兜底（socket 断开时也能收到手机端动作）
+    if (!this.companionPollTimer) {
+      this.companionPollTimer = setInterval(() => this.getQueuedActions(), 3000);
+    }
   }
 
   disconnectFromCompanionCharacterRoom() {
+    if (this.companionPollTimer) {
+      clearInterval(this.companionPollTimer);
+      this.companionPollTimer = null;
+    }
     if (!this.socketRoomConnected) return;
     this.socket.emit('leave', {
       username: 'foundry' + game.user.name,
@@ -5894,7 +5933,7 @@ export class ActorPF extends Actor {
       contentType: 'application/json; charset=utf-8',
       success: function(data) {
         //LogHelper.log('LOTDCOMPANION | ', data)
-        that.executeRemoteAction(data);
+        if (data && data.action) that.executeRemoteAction(data);
       },
     });
   }
@@ -5902,16 +5941,19 @@ export class ActorPF extends Actor {
   async executeRemoteAction(remoteAction) {
     switch (remoteAction.action) {
       case 'ability':
-        this.rollAbility(remoteAction.params);
+        this.rollAbility(remoteAction.params, { event: { shiftKey: true } });
         break;
       case 'save':
-        this.rollSave(remoteAction.params);
+        this.rollSave(remoteAction.params, null, null, { event: { shiftKey: true }, skipDialog: true });
         break;
       case 'rollSkill':
-        this.rollSkill(remoteAction.params);
+        this.rollSkill(remoteAction.params, { event: { shiftKey: true }, skipDialog: true });
         break;
       case 'useItem':
-        this.items.find((i) => i._id === remoteAction.params).use({});
+        this.items.find((i) => (i.id || i._id) === remoteAction.params)?.use({ ev: { shiftKey: true }, skipDialog: true });
+        break;
+      case 'updateActor':
+        this.update(remoteAction.params || {});
         break;
       case 'rest':
         this.promptRest();

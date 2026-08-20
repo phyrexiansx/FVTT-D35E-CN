@@ -57,7 +57,7 @@ export async function PatchCore() {
   Object.defineProperty(ActiveEffect.prototype, "isTemporary", {
     get: function () {
       const duration = this.data.duration.seconds ?? (this.data.duration.rounds || this.data.duration.turns) ?? 0;
-      return duration > 0 || this.getFlag("core", "statusId") || this.getFlag("D35E", "show");
+      return duration > 0 || this.statuses.size > 0 || this.getFlag("D35E", "show");
     },
   });
 

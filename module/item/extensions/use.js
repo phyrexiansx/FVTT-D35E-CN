@@ -55,7 +55,13 @@ export class ItemUse {
       const _at = this.item.actor;
       if (_at) {
         const _ctl = canvas?.tokens?.controlled?.find((t) => t.actor?.id === _at.id);
-        this.item._animToken = (_ctl || _at.token)?.id || null;
+        let _tid = _ctl?.id || _at.token?.id;
+        // v11 Actor.token 可能为 null：兜底取 canvas 上该 actor 的 Token
+        if (!_tid) {
+          const _ft = canvas?.tokens?.placeables?.find((t) => t.actor?.id === _at.id);
+          _tid = _ft?.id || null;
+        }
+        this.item._animToken = _tid;
       }
     }
     let actor = this.item.actor;
@@ -121,6 +127,24 @@ export class ItemUse {
   }
 
   async rollAttack(fullAttack, form, temporaryItem, actor, rollData, skipChargeCheck) {
+    // [D35E]「需要借机攻击」：使用该攻击计入 1 次借机攻击（usedAaoCount+1）。
+    // 即使本次本身就是借机攻击（rollData.aoAttack=1，由 executeAoOAttack/攻击窗口勾选已扣减）也只计 1 次，此处跳过；
+    // 对话框取消（未真正投掷）不经过 rollAttack，不会误扣；无战斗（无 combatant）自然不扣。
+    if (game.combat && this.item.system?.needsAoO === true && !rollData?.aoAttack) {
+      try {
+        let tokId = this.item._animToken || actor?.token?.id;
+        // v11 Actor.token 可能为 null：兜底取 canvas 上该 actor 的 Token
+        if (!tokId && actor) {
+          const _ft = canvas.tokens?.placeables?.find((t) => t.actor?.id === actor.id);
+          tokId = _ft?.id || null;
+        }
+        const combatant = tokId ? game.combat.combatants.find((c) => c.tokenId === tokId) : null;
+        if (combatant) {
+          const used = combatant.getFlag("D35E", "usedAaoCount") || 0;
+          combatant.update({ "flags.D35E.usedAaoCount": used + 1 }).catch(() => {});
+        }
+      } catch (e) {}
+    }
     // [D35E]优势/劣势：无对话框（快速投掷）时跟随变化效果标签（优势/劣势抵消），对话框 radio 在 extractFormData 内覆盖
     if (rollData.advantageMode === undefined) {
       const _tagMode = (actor || this.item.actor) ? getRollAdvantageMode(actor || this.item.actor) : 0;
@@ -557,7 +581,7 @@ export class ItemUse {
     let dc = this.#_getSpellDC(rollData);
     rollData.dc = dc;
     rollData.spellPenetration = rollData.cl + (new Roll35e(rollData.featSpellPenetrationBonus || "0", rollData).roll().total || 0);
-    this.#_applyMetamagicModifiers(damageModifiers, rollModifiers);
+    this.#_applyMetamagicModifiers(damageModifiers, rollModifiers, rollData);
 
     let attacks = [];
     if (this.item.hasAttack) {
@@ -761,18 +785,21 @@ export class ItemUse {
         if (sheetRendered) this.item.parent.sheet.minimize();
         result = await template.drawPreview(event);
         if (!result.result) {
+          // [D35E] 右键取消模板放置：跳过模板锁定，继续结算
         }
         if (sheetRendered) this.item.parent.sheet.maximize();
       }
-      let _template = await result.place();
-      if (selectedTargets.length == 0) {
+      let _template = result && result.result ? await result.place() : null;
+      if (selectedTargets.length == 0 && _template) {
         // We can override selected targets
         selectedTargets = template.getTokensWithin().filter((t) => !t.data.hidden);
         hiddenTargets = template.getTokensWithin().filter((t) => t.data.hidden);
       }
-      templateId = _template.id;
-      templateX = template.data.x;
-      templateY = template.data.y;
+      if (_template) {
+        templateId = _template.id;
+        templateX = template.data.x;
+        templateY = template.data.y;
+      }
     }
 
     // //game.D35E.logger.log(`Updating item on attack.`)
@@ -948,7 +975,7 @@ export class ItemUse {
     } catch (e) {}
     return { rolled: rolled, rollData: rollData };
   }
-  #_applyMetamagicModifiers(damageModifiers, rollModifiers) {
+  #_applyMetamagicModifiers(damageModifiers, rollModifiers, rollData) {
     if (this.item.system?.metamagicFeats?.maximized) {
       damageModifiers.maximize = true;
       rollModifiers.push(`${game.i18n.localize("D35E.SpellMaximized")}`);
@@ -1167,7 +1194,13 @@ export class ItemUse {
       const _at = this.item.actor;
       if (_at) {
         const _ctl = canvas?.tokens?.controlled?.find((t) => t.actor?.id === _at.id);
-        this.item._animToken = (_ctl || _at.token)?.id || null;
+        let _tid = _ctl?.id || _at.token?.id;
+        // v11 Actor.token 可能为 null：兜底取 canvas 上该 actor 的 Token
+        if (!_tid) {
+          const _ft = canvas?.tokens?.placeables?.find((t) => t.actor?.id === _at.id);
+          _tid = _ft?.id || null;
+        }
+        this.item._animToken = _tid;
       }
     }
     if (actor && !actor.isOwner) return ui.notifications.warn(game.i18n.localize("D35E.ErrorNoActorPermission"));
@@ -1357,6 +1390,7 @@ export class ItemUse {
       flankingName: flankingName,
       flankingImg: flankingImg,
       isThreatening: isThreatening,
+      ammo: this.item.getFlag("D35E", "lastAmmoId") || "none", // [D35E]弹药记忆：打开对话框时预选上次选择的弹药
       ammunition: getProperty(this.item.system, "thrown")
         ? actor.items.filter((o) => o._id === getProperty(this.item.system, "originalWeaponId"))
         : actor.items.filter((o) => o.type === "loot" && o.system.subType === "ammo" && o.system.quantity > 0),
@@ -1540,6 +1574,8 @@ export class ItemUse {
 
     if (form.find('[name="ammunition-id"]').val() !== undefined) {
       useAmmoId = form.find('[name="ammunition-id"]').val();
+      // [D35E]弹药记忆：记住本次选择的弹药（按武器物品），下次打开对话框预选
+      this.item.setFlag("D35E", "lastAmmoId", useAmmoId).catch(() => {});
       useAmmoDamage = form.find('[name="ammo-dmg-formula"]').val();
       useAmmoDamageType = form.find('[name="ammo-dmg-type"]').val();
       let useAmmoDamageUid = form.find('[name="ammo-dmg-uid"]').val();

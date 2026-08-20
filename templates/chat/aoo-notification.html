@@ -3,7 +3,11 @@
     {{#if moverImg}}<img src="{{moverImg}}" title="{{moverName}}" width="36" height="36" class="aoo-token-img"/>{{/if}}
     <div class="flexcol">
       <h3>{{localize "D35E.AttackOfOpportunity"}}</h3>
+      {{#if blocked}}
+      <h4 class="aoo-subtitle">{{moverName}} {{localize "D35E.AoOLeavingThreatened"}}，{{localize "D35E.AoOBlocked"}}</h4>
+      {{else}}
       <h4 class="aoo-subtitle">{{moverName}} {{localize "D35E.AoOLeavingThreatened"}}</h4>
+      {{/if}}
     </div>
   </header>
   <div class="card-content">

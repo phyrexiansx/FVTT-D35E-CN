@@ -7,7 +7,7 @@
 // Import Modules
 import {D35E} from './module/config.js';
 import {registerSystemSettings} from './module/settings.js';
-import {registerAutoApplyHooks, registerKeybindings} from './module/automation/autoApply.js';
+import {registerAutoApplyHooks, registerKeybindings, actorHasNoAoO} from './module/automation/autoApply.js';
 import {registerChatViews} from './module/chatlog/chatTabs.js';
 import {registerChatViewKeybindings} from './module/chatlog/chatTabs.js';
 import {registerAoO, handleAoOThreat} from './module/automation/aoo.js';
@@ -319,7 +319,12 @@ Hooks.once("init", async function () {
     CONFIG.Canvas.layers.sight = SightLayerPF;
   }
 
-  Handlebars.registerHelper("ifeq", function (a, b, options) {
+  Handlebars.registerHelper("d35eAlignmentKey", function (v) {
+  // [D35E]阵营下拉：兼容旧数据（中文/英文全称）映射为英文简写
+  const M = {"LG":"守序善良","NG":"中立善良","CG":"混乱善良","LN":"守序中立","N":"绝对中立","CN":"混乱中立","LE":"守序邪恶","NE":"中立邪恶","CE":"混乱邪恶","Lawful Good":"LG","Neutral Good":"NG","Chaotic Good":"CG","Lawful Neutral":"LN","Neutral":"N","Chaotic Neutral":"CN","Lawful Evil":"LE","Neutral Evil":"NE","Chaotic Evil":"CE"};
+  return M[String(v || "").trim()] || v || "";
+});
+Handlebars.registerHelper("ifeq", function (a, b, options) {
     if (a == b) {
       return options.fn(this);
     }
@@ -1125,9 +1130,11 @@ Hooks.on("preUpdateToken", async (token, data, options, userId) => {
       );
       const result = Hooks.call("D35E.Threatened.tokenThreatened", rawToken, threateningTokens, game.user.id);
       if (result === false) return false;
+      // [D35E]不会被借机：移动者拥有该能力 → 不弹借机窗口（聊天提示仍发送，改 blocked 文案）
+      const moverNoAoO = actorHasNoAoO(rawToken.actor);
       // 借机只在战斗时生效：弹窗（PC → owner，NPC → GM）与聊天提示同受 game.combat 约束
       // 弹窗异常不影响下方聊天提示的发送
-      if (threateningTokens.length > 0 && game.combat) {
+      if (threateningTokens.length > 0 && game.combat && !moverNoAoO) {
         try {
           handleAoOThreat(rawToken, threateningTokens);
         } catch (e) {
@@ -1141,6 +1148,7 @@ Hooks.on("preUpdateToken", async (token, data, options, userId) => {
           {
             moverImg: rawToken.document.texture?.src || "",
             moverName: rawToken.document.name,
+            blocked: moverNoAoO,
             threateningTokens: threateningTokens.map((t) => {
               const combatant = game.combat?.combatants?.find((c) => c.tokenId === t.id);
               const aooMax = combatant?.getFlag("D35E", "aaoCount") ?? 1;

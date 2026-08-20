@@ -89,10 +89,17 @@
           <span>{{labels.totalExp}} {{ localize 'D35E.XP' }}</span>
         </div>
         <div class="intuitive-header-toggle" style="display: inline-flex; align-items: center; margin: 2px 0 0 8px; position: relative;">
+          <label class="checkbox" title="开启时此角色移动不会触发借机攻击" style="position: relative; display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; margin: 0 4px 0 0; vertical-align: middle; line-height: 18px;">
+            <input type="checkbox" class="stylized noaoo-toggle" {{checked noAoOEffective}}/>
+            <span class="checkmark"></span>
+          </label>
           <label class="checkbox" title="阻止此角色自动结算" style="position: relative; display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; margin: 0 4px 0 0; vertical-align: middle; line-height: 18px;">
             <input type="checkbox" class="stylized intuitive-toggle" {{checked intuitiveEffective}}/>
             <span class="checkmark"></span>
           </label>
+          {{#if intuitiveManualSet}}
+          <a class="intuitive-reset" title="清除手动设置，恢复跟随生效物品（按专长/状态/装备/武器的勾选判断）" style="margin: 0 4px 0 0; font-size: 11px; color: #c55;"><i class="fas fa-undo"></i></a>
+          {{/if}}
           <i class="fas fa-info-circle" style="margin: 0 4px 0 0; color: lightgray; font-size: 12px; line-height: 18px; vertical-align: middle;" title="开启时此角色作为目标时不会自动结算效果"></i>
         </div>
       </div>

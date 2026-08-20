@@ -16,6 +16,21 @@ export function actorHasIntuition(actor) {
   }
 }
 
+/**角色是否拥有"不会被借机"能力：手动设置优先，未设置时跟随生效物品（专长/装备/状态能力 changeFlags.noAoO） */
+export function actorHasNoAoO(actor) {
+  if (!actor) return false;
+  const manual = actor.getFlag("D35E", "noAoO");
+  if (manual === true) return true;
+  if (manual === false) return false;
+  try {
+    return (actor.items || []).some(
+      (i) => i.system?.changeFlags?.noAoO === true && ItemActiveHelper.isActive(i)
+    );
+  } catch (err) {
+    return false;
+  }
+}
+
 /**目标是否因存在"可选型高级战斗行动选项"而需要人工介入（action: defenseOptional / savingThrowOptional 等） */
 export function targetNeedsManualFor(targetActor, optionalAction) {
   if (!targetActor) return true;

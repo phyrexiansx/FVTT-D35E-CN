@@ -482,6 +482,20 @@
 .D35E.sheet .sheet-header .summary li input {
   vertical-align: top;
 }
+.D35E.sheet .sheet-header .summary li select {
+  width: 100%;
+  height: 24px;
+  line-height: 24px;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0 2px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  vertical-align: top;
+}
+
 .D35E.sheet .sheet-navigation {
   flex: 0 0 30px;
   margin-bottom: 5px;
