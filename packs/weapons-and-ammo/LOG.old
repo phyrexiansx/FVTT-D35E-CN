@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.500 4af4 Recovering log #1466
-2026/08/22-19:16:47.505 4af4 Delete type=0 #1466
-2026/08/22-19:16:47.506 4af4 Delete type=3 #1464
-2026/08/22-19:59:36.156 1444 Level-0 table #1471: started
-2026/08/22-19:59:36.156 1444 Level-0 table #1471: 0 bytes OK
-2026/08/22-19:59:36.156 1444 Delete type=0 #1469
-2026/08/22-19:59:36.160 1444 Manual compaction at level-0 from '!items!0EaqzE3KAPe9ZwZu' @ 72057594037927935 : 1 .. '!items!zPeqFvqpBGmWNYVO' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.719 4230 Log #1473: 0 ops saved to Table #1474 OK
+2026/08/22-20:20:16.728 4230 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\weapons-and-ammo/001473.log: OK
+2026/08/22-20:20:16.729 4230 Table #1425: 87 entries OK
+2026/08/22-20:20:16.729 4230 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\weapons-and-ammo/MANIFEST-001472: OK
+2026/08/22-20:20:16.729 4230 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\weapons-and-ammo; recovered 1 files; 160845 bytes. Some data may have been lost. ****

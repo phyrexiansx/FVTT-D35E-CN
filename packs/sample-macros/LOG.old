@@ -1,7 +1,6 @@
-2026/08/22-19:16:47.546 4af8 Recovering log #1462
-2026/08/22-19:16:47.550 4af8 Delete type=0 #1462
-2026/08/22-19:16:47.550 4af8 Delete type=3 #1460
-2026/08/22-19:59:36.161 1444 Level-0 table #1467: started
-2026/08/22-19:59:36.161 1444 Level-0 table #1467: 0 bytes OK
-2026/08/22-19:59:36.162 1444 Delete type=0 #1465
-2026/08/22-19:59:36.165 1444 Manual compaction at level-0 from '!macros!6CbfniyM2QnyLo1L' @ 72057594037927935 : 1 .. '!macros!ntsVqpwD52tRF1nN' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.889 5b20 Log #1469: 0 ops saved to Table #1470 OK
+2026/08/22-20:20:16.889 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\sample-macros/001469.log: OK
+2026/08/22-20:20:16.889 5b20 Table #1419: 5 entries OK
+2026/08/22-20:20:16.889 5b20 Table #1453: 2 entries OK
+2026/08/22-20:20:16.889 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\sample-macros/MANIFEST-001468: OK
+2026/08/22-20:20:16.899 5b20 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\sample-macros; recovered 2 files; 22793 bytes. Some data may have been lost. ****

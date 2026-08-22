@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.530 4af8 Recovering log #1463
-2026/08/22-19:16:47.530 4af8 Delete type=0 #1463
-2026/08/22-19:16:47.530 4af8 Delete type=3 #1461
-2026/08/22-19:59:36.160 1444 Level-0 table #1468: started
-2026/08/22-19:59:36.160 1444 Level-0 table #1468: 0 bytes OK
-2026/08/22-19:59:36.161 1444 Delete type=0 #1466
-2026/08/22-19:59:36.162 1444 Manual compaction at level-0 from '!items!2otdWtOLCTIobCsD' @ 72057594037927935 : 1 .. '!items!wz4oebLo03y1jPr6' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.819 50c4 Log #1470: 0 ops saved to Table #1471 OK
+2026/08/22-20:20:16.819 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\damage-types/001470.log: OK
+2026/08/22-20:20:16.821 50c4 Table #1422: 22 entries OK
+2026/08/22-20:20:16.821 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\damage-types/MANIFEST-001469: OK
+2026/08/22-20:20:16.837 50c4 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\damage-types; recovered 1 files; 8506 bytes. Some data may have been lost. ****

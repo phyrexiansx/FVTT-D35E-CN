@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.256 4af8 Recovering log #1466
-2026/08/22-19:16:47.260 4af8 Delete type=0 #1466
-2026/08/22-19:16:47.260 4af8 Delete type=3 #1464
-2026/08/22-19:59:36.096 1444 Level-0 table #1471: started
-2026/08/22-19:59:36.096 1444 Level-0 table #1471: 0 bytes OK
-2026/08/22-19:59:36.097 1444 Delete type=0 #1469
-2026/08/22-19:59:36.099 1444 Manual compaction at level-0 from '!items!0xjx3Z7ZtZ6i35yB' @ 72057594037927935 : 1 .. '!items!t1aazwdbViSO2EjH' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.089 45f0 Log #1473: 0 ops saved to Table #1474 OK
+2026/08/22-20:20:16.089 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\racialfeatures/001473.log: OK
+2026/08/22-20:20:16.099 45f0 Table #1437: 32 entries OK
+2026/08/22-20:20:16.100 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\racialfeatures/MANIFEST-001472: OK
+2026/08/22-20:20:16.109 45f0 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\racialfeatures; recovered 1 files; 87436 bytes. Some data may have been lost. ****

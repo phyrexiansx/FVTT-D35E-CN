@@ -309,7 +309,7 @@ Hooks.on("renderSettingsConfig", (app, html) => {
       const links = catNames
         .map((name, i) => `<a class="d35e-settings-nav-link" data-cat="${i}">${name}</a>`)
         .join("");
-      const nav = $(`<div class="d35e-settings-nav">${links}<span class="d35e-settings-nav-tip">「${HIDDEN_CATEGORY}」分类中的选项不显示</span></div>`);
+      const nav = $(`<div class="d35e-settings-nav">${links}<span class="d35e-settings-nav-tip">点击可快速切换区域</span></div>`);
       nav.find("a").on("click", (ev) => {
         ev.preventDefault();
         const target = document.getElementById(`d35e-cat-s-${ev.currentTarget.dataset.cat}`);

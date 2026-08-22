@@ -1,7 +1,6 @@
-2026/08/22-19:16:47.220 4af8 Recovering log #1760
-2026/08/22-19:16:47.225 4af8 Delete type=0 #1760
-2026/08/22-19:16:47.225 4af8 Delete type=3 #1758
-2026/08/22-19:59:36.094 1444 Level-0 table #1765: started
-2026/08/22-19:59:36.096 1444 Level-0 table #1765: 0 bytes OK
-2026/08/22-19:59:36.096 1444 Delete type=0 #1763
-2026/08/22-19:59:36.099 1444 Manual compaction at level-0 from '!folders!3MGwsJ7Rw3Jb1Tbb' @ 72057594037927935 : 1 .. '!items!zyAgwZcXzwZAR16E' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.024 50c4 Log #1767: 0 ops saved to Table #1768 OK
+2026/08/22-20:20:16.024 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\magic-items/001767.log: OK
+2026/08/22-20:20:16.031 50c4 Table #1718: 687 entries OK
+2026/08/22-20:20:16.034 50c4 Table #1719: 329 entries OK
+2026/08/22-20:20:16.034 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\magic-items/MANIFEST-001766: OK
+2026/08/22-20:20:16.034 50c4 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\magic-items; recovered 2 files; 3137601 bytes. Some data may have been lost. ****

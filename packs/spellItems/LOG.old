@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.195 4af4 Recovering log #1458
-2026/08/22-19:16:47.200 4af4 Delete type=0 #1458
-2026/08/22-19:16:47.200 4af4 Delete type=3 #1456
-2026/08/22-19:59:36.089 1444 Level-0 table #1463: started
-2026/08/22-19:59:36.089 1444 Level-0 table #1463: 0 bytes OK
-2026/08/22-19:59:36.090 1444 Delete type=0 #1461
-2026/08/22-19:59:36.091 1444 Manual compaction at level-0 from '!items!HGI9WDXLDTEmzjdF' @ 72057594037927935 : 1 .. '!items!qABLyvmcrNOTb0Ju' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:15.954 4230 Log #1465: 0 ops saved to Table #1466 OK
+2026/08/22-20:20:15.959 4230 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spellItems/001465.log: OK
+2026/08/22-20:20:15.959 4230 Table #1417: 4 entries OK
+2026/08/22-20:20:15.959 4230 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spellItems/MANIFEST-001464: OK
+2026/08/22-20:20:15.964 4230 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spellItems; recovered 1 files; 7145 bytes. Some data may have been lost. ****

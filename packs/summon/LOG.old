@@ -1,7 +1,8 @@
-2026/08/22-19:16:47.820 4af4 Recovering log #2056
-2026/08/22-19:16:47.821 4af4 Delete type=0 #2056
-2026/08/22-19:16:47.821 4af4 Delete type=3 #2054
-2026/08/22-19:59:36.171 1444 Level-0 table #2061: started
-2026/08/22-19:59:36.171 1444 Level-0 table #2061: 0 bytes OK
-2026/08/22-19:59:36.172 1444 Delete type=0 #2059
-2026/08/22-19:59:36.173 1444 Manual compaction at level-0 from '!actors!0Bfwv8irrvjbMCEQ' @ 72057594037927935 : 1 .. '!folders!go1bkamf5riWKYfg' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:17.649 45f0 Log #2063: 0 ops saved to Table #2064 OK
+2026/08/22-20:20:17.655 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\summon/002063.log: OK
+2026/08/22-20:20:17.669 45f0 Table #1961: 336 entries OK
+2026/08/22-20:20:17.680 45f0 Table #2013: 850 entries OK
+2026/08/22-20:20:17.689 45f0 Table #2014: 837 entries OK
+2026/08/22-20:20:17.699 45f0 Table #2015: 613 entries OK
+2026/08/22-20:20:17.701 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\summon/MANIFEST-002062: OK
+2026/08/22-20:20:17.705 45f0 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\summon; recovered 4 files; 7918663 bytes. Some data may have been lost. ****

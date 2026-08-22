@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.265 264c Recovering log #672
-2026/08/22-19:16:47.270 264c Delete type=0 #672
-2026/08/22-19:16:47.270 264c Delete type=3 #670
-2026/08/22-19:59:36.098 1444 Level-0 table #677: started
-2026/08/22-19:59:36.098 1444 Level-0 table #677: 0 bytes OK
-2026/08/22-19:59:36.099 1444 Delete type=0 #675
-2026/08/22-19:59:36.099 1444 Manual compaction at level-0 from '!items!Dyske2lpzymbegTZ' @ 72057594037927935 : 1 .. '!items!wWjjfDtZkCqUSnkz' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.139 5b20 Log #679: 0 ops saved to Table #680 OK
+2026/08/22-20:20:16.139 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\subspecies/000679.log: OK
+2026/08/22-20:20:16.139 5b20 Table #631: 5 entries OK
+2026/08/22-20:20:16.149 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\subspecies/MANIFEST-000678: OK
+2026/08/22-20:20:16.149 5b20 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\subspecies; recovered 1 files; 9227 bytes. Some data may have been lost. ****

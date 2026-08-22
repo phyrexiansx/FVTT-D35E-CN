@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.175 4af4 Recovering log #1458
-2026/08/22-19:16:47.180 4af4 Delete type=0 #1458
-2026/08/22-19:16:47.180 4af4 Delete type=3 #1456
-2026/08/22-19:59:36.093 1444 Level-0 table #1463: started
-2026/08/22-19:59:36.094 1444 Level-0 table #1463: 0 bytes OK
-2026/08/22-19:59:36.094 1444 Delete type=0 #1461
-2026/08/22-19:59:36.094 1444 Manual compaction at level-0 from '!items!Ke3JmpbcHjVecxMM' @ 72057594037927935 : 1 .. '!items!vDGHsQsD1sh9bh4C' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:15.900 4230 Log #1465: 0 ops saved to Table #1466 OK
+2026/08/22-20:20:15.900 4230 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\minion-classes/001465.log: OK
+2026/08/22-20:20:15.900 4230 Table #1417: 4 entries OK
+2026/08/22-20:20:15.903 4230 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\minion-classes/MANIFEST-001464: OK
+2026/08/22-20:20:15.909 4230 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\minion-classes; recovered 1 files; 39186 bytes. Some data may have been lost. ****

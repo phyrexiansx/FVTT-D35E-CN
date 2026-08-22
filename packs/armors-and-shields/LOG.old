@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.480 4af4 Recovering log #1460
-2026/08/22-19:16:47.480 4af4 Delete type=0 #1460
-2026/08/22-19:16:47.480 4af4 Delete type=3 #1458
-2026/08/22-19:59:36.153 1444 Level-0 table #1465: started
-2026/08/22-19:59:36.153 1444 Level-0 table #1465: 0 bytes OK
-2026/08/22-19:59:36.154 1444 Delete type=0 #1463
-2026/08/22-19:59:36.156 1444 Manual compaction at level-0 from '!items!2WDKFZ64OZW9p8Qc' @ 72057594037927935 : 1 .. '!items!vfbifYiVX1kmQTFT' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.639 45f0 Log #1467: 0 ops saved to Table #1468 OK
+2026/08/22-20:20:16.639 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\armors-and-shields/001467.log: OK
+2026/08/22-20:20:16.649 45f0 Table #1419: 18 entries OK
+2026/08/22-20:20:16.649 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\armors-and-shields/MANIFEST-001466: OK
+2026/08/22-20:20:16.649 45f0 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\armors-and-shields; recovered 1 files; 55162 bytes. Some data may have been lost. ****

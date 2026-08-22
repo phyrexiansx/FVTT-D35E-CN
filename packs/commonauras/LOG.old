@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.205 4af8 Recovering log #1460
-2026/08/22-19:16:47.210 4af8 Delete type=0 #1460
-2026/08/22-19:16:47.210 4af8 Delete type=3 #1458
-2026/08/22-19:59:36.091 1444 Level-0 table #1465: started
-2026/08/22-19:59:36.091 1444 Level-0 table #1465: 0 bytes OK
-2026/08/22-19:59:36.092 1444 Delete type=0 #1463
-2026/08/22-19:59:36.094 1444 Manual compaction at level-0 from '!items!EA4BXOAr3RVeeyFT' @ 72057594037927935 : 1 .. '!items!qxKRDmrUi5hkzJRM' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:15.979 50c4 Log #1467: 0 ops saved to Table #1468 OK
+2026/08/22-20:20:15.979 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\commonauras/001467.log: OK
+2026/08/22-20:20:15.979 50c4 Table #1419: 7 entries OK
+2026/08/22-20:20:15.979 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\commonauras/MANIFEST-001466: OK
+2026/08/22-20:20:15.984 50c4 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\commonauras; recovered 1 files; 10252 bytes. Some data may have been lost. ****

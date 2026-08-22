@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.306 4af4 Recovering log #1467
-2026/08/22-19:16:47.310 4af4 Delete type=0 #1467
-2026/08/22-19:16:47.310 4af4 Delete type=3 #1465
-2026/08/22-19:59:36.104 1444 Level-0 table #1472: started
-2026/08/22-19:59:36.104 1444 Level-0 table #1472: 0 bytes OK
-2026/08/22-19:59:36.105 1444 Delete type=0 #1470
-2026/08/22-19:59:36.147 1444 Manual compaction at level-0 from '!items!0AaFfWWGuO7N4Wub' @ 72057594037927935 : 1 .. '!items!zDLWNbNnWhPGRPKU' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.269 5b20 Log #1474: 0 ops saved to Table #1475 OK
+2026/08/22-20:20:16.269 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spell-like-abilities/001474.log: OK
+2026/08/22-20:20:16.274 5b20 Table #1426: 63 entries OK
+2026/08/22-20:20:16.274 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spell-like-abilities/MANIFEST-001473: OK
+2026/08/22-20:20:16.274 5b20 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spell-like-abilities; recovered 1 files; 289810 bytes. Some data may have been lost. ****

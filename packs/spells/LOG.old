@@ -1,14 +1,7 @@
-2026/08/22-19:16:47.321 3fa0 Recovering log #1780
-2026/08/22-19:16:47.325 3fa0 Delete type=0 #1780
-2026/08/22-19:16:47.325 3fa0 Delete type=3 #1778
-2026/08/22-19:59:36.102 1444 Level-0 table #1785: started
-2026/08/22-19:59:36.103 1444 Level-0 table #1785: 3875 bytes OK
-2026/08/22-19:59:36.104 1444 Delete type=0 #1783
-2026/08/22-19:59:36.106 1444 Manual compaction at level-0 from '!folders!0AYJUvyUKSGGFvHG' @ 72057594037927935 : 1 .. '!items!zzxgm4kjfC5h0K05' @ 0 : 0; will stop at '!items!D1KgQc1fRyoNPNwY' @ 26394 : 1
-2026/08/22-19:59:36.106 1444 Compacting 1@0 + 1@1 files
-2026/08/22-19:59:36.147 1444 Generated table #1786@0: 1624 keys, 2124093 bytes
-2026/08/22-19:59:36.147 1444 Compacted 1@0 + 1@1 files => 2124093 bytes
-2026/08/22-19:59:36.147 1444 compacted to: files[ 0 3 0 0 0 0 0 ]
-2026/08/22-19:59:36.147 1444 Delete type=2 #1737
-2026/08/22-19:59:36.147 1444 Delete type=2 #1785
-2026/08/22-19:59:36.150 1444 Manual compaction at level-0 from '!items!D1KgQc1fRyoNPNwY' @ 26394 : 1 .. '!items!zzxgm4kjfC5h0K05' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.291 50c4 Log #1788: 0 ops saved to Table #1789 OK
+2026/08/22-20:20:16.292 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spells/001788.log: OK
+2026/08/22-20:20:16.300 50c4 Table #1738: 1529 entries OK
+2026/08/22-20:20:16.300 50c4 Table #1739: 864 entries OK
+2026/08/22-20:20:16.309 50c4 Table #1786: 1624 entries OK
+2026/08/22-20:20:16.319 50c4 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spells/MANIFEST-001787: OK
+2026/08/22-20:20:16.319 50c4 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\spells; recovered 3 files; 5437666 bytes. Some data may have been lost. ****

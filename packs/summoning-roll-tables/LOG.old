@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.570 264c Recovering log #1506
-2026/08/22-19:16:47.578 264c Delete type=0 #1506
-2026/08/22-19:16:47.578 264c Delete type=3 #1504
-2026/08/22-19:59:36.166 1444 Level-0 table #1511: started
-2026/08/22-19:59:36.167 1444 Level-0 table #1511: 0 bytes OK
-2026/08/22-19:59:36.168 1444 Delete type=0 #1509
-2026/08/22-19:59:36.169 1444 Manual compaction at level-0 from '!folders!PxiFJk6JxXJt0zpj' @ 72057594037927935 : 1 .. '!tables.results!x23hSYJiJuFZgfZv.zKVeKXl7yCSDPK0o' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:17.019 5b20 Log #1513: 0 ops saved to Table #1514 OK
+2026/08/22-20:20:17.019 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\summoning-roll-tables/001513.log: OK
+2026/08/22-20:20:17.024 5b20 Table #1417: 683 entries OK
+2026/08/22-20:20:17.024 5b20 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\summoning-roll-tables/MANIFEST-001512: OK
+2026/08/22-20:20:17.029 5b20 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\summoning-roll-tables; recovered 1 files; 95884 bytes. Some data may have been lost. ****

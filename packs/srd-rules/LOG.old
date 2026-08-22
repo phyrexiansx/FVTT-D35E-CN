@@ -1,7 +1,5 @@
-2026/08/22-19:16:47.530 4af4 Recovering log #1470
-2026/08/22-19:16:47.540 4af4 Delete type=0 #1470
-2026/08/22-19:16:47.540 4af4 Delete type=3 #1468
-2026/08/22-19:59:36.165 1444 Level-0 table #1475: started
-2026/08/22-19:59:36.165 1444 Level-0 table #1475: 0 bytes OK
-2026/08/22-19:59:36.166 1444 Delete type=0 #1473
-2026/08/22-19:59:36.168 1444 Manual compaction at level-0 from '!journal!4gc0Vsvs4f9HnrBL' @ 72057594037927935 : 1 .. '!journal.pages!tedhWD6I6IrG8DDW.oHSb6aP579fDs6FZ' @ 0 : 0; will stop at (end)
+2026/08/22-20:20:16.859 45f0 Log #1477: 0 ops saved to Table #1478 OK
+2026/08/22-20:20:16.859 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\srd-rules/001477.log: OK
+2026/08/22-20:20:16.859 45f0 Table #1429: 13 entries OK
+2026/08/22-20:20:16.869 45f0 Archiving C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\srd-rules/MANIFEST-001476: OK
+2026/08/22-20:20:16.875 45f0 **** Repaired leveldb C:\Users\Windows11\AppData\Local\FoundryVTT\Data\systems\D35E\packs\srd-rules; recovered 1 files; 34946 bytes. Some data may have been lost. ****
