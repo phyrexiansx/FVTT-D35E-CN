@@ -41,12 +41,12 @@ export class VisionPermissionSheet extends FormApplication {
     }
   
     get title() {
-      return this.token && !this.token.data.actorLink
+      return this.token && !(this.token.document?.actorLink ?? this.token.actorLink)
         ? `Vision Permissions: [Token] ${this.object.name}`
         : `Vision Permissions: ${this.object.name}`;
     }
     get isLinkedToken() {
-      return this.token ? this.token.data.actorLink : false;
+      return this.token ? (this.token.document?.actorLink ?? this.token.actorLink) : false;
     }
   
     async _updateObject(event, formData) {

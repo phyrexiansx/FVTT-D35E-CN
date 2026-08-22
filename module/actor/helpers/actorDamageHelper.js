@@ -13,6 +13,54 @@ const _COUNTERATTACK_DEDUP_MS = 5000;
 let _counterattackBusyUntil = 0;
 const _COUNTERATTACK_BUSY_MS = 2000;
 
+// [D35E] 反击目标锁定跨用户同步（whisper + flags 通道，聊天不留耳语）
+const _TARGET_SYNC_FLAG = "counterTargetSync";
+
+// 反击方在线玩家 owner（排除执行端自己）
+function _onlinePlayerOwners(actor) {
+    if (!actor) return [];
+    const owners =
+        typeof actor.getOwnerUsers === "function"
+            ? actor.getOwnerUsers().filter((u) => u.active && !u.isGM && u.id !== game.userId)
+            : game.users.filter(
+                  (u) => u.active && !u.isGM && u.id !== game.userId && actor.testUserPermission(u, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)
+              );
+    return owners.map((u) => u.id);
+}
+
+// 发送目标同步指令（接收端隐藏，不删除）
+function _sendTargetSync(action, sourceTokenId, prevTargets, recipients) {
+    if (!recipients?.length) return;
+    ChatMessage.create({
+        whisper: recipients,
+        content: "",
+        speaker: { alias: "" },
+        flags: { D35E: { [_TARGET_SYNC_FLAG]: { action, sceneId: canvas.scene?.id, sourceTokenId, prevTargets } } },
+    }).catch(() => {});
+}
+
+// 接收端：lock 保存玩家反击前锁定并锁定攻击者；restore 恢复玩家锁定
+function _onTargetSyncMessage(message) {
+    const p = message.getFlag("D35E", _TARGET_SYNC_FLAG);
+    if (!p) return;
+    if (message.author?.id === game.userId) return;
+    const recipients = message.whisper || [];
+    if (!recipients.includes(game.userId)) return;
+    if (canvas.scene?.id !== p.sceneId) return;
+    if (p.action === "lock") {
+        game.user._d35eCounterPrevTargets = Array.from(game.user.targets || []).map((t) => t.id);
+        game.user.updateTokenTargets([p.sourceTokenId]).catch(() => {});
+    } else if (p.action === "restore") {
+        const prev = game.user._d35eCounterPrevTargets || p.prevTargets || [];
+        delete game.user._d35eCounterPrevTargets;
+        game.user.updateTokenTargets(prev).catch(() => {});
+    }
+}
+Hooks.on("createChatMessage", (message) => _onTargetSyncMessage(message));
+Hooks.on("renderChatMessage", (message, html) => {
+    if (message.getFlag("D35E", _TARGET_SYNC_FLAG)) html.hide();
+});
+
 export class ActorDamageHelper {
     /**
      * Apply rolled dice damage to the token or tokens which are currently controlled.
@@ -394,6 +442,10 @@ export class ActorDamageHelper {
                 });
             }
             if (!counterItems.length) return;
+            // [D35E]反击前记录执行端锁定（反击结束后恢复原目标）
+            const prevTargets = Array.from(game.user.targets || []).map((t) => t.id);
+            // 反击方在线玩家（跨玩家时同步锁定/恢复至玩家端）
+            const playerOwners = _onlinePlayerOwners(targetActor);
             // [D35E]反击活动计数：全力攻击/批量攻击宏据此等待反击结算完成后再继续
             //（从此刻起计入活动窗口，含 150ms 延迟与全部反击攻击的使用）
             game.D35E = game.D35E || {};
@@ -413,6 +465,8 @@ export class ActorDamageHelper {
                 } catch (err) {
                     /* 目标锁定失败不阻断反击 */
                 }
+                // [D35E]跨玩家：反击方有在线玩家时，玩家端同步锁定攻击者（玩家端保存反击前锁定）
+                if (playerOwners.length) _sendTargetSync("lock", sourceToken.id, prevTargets, playerOwners);
                 // 依次自动使用（标记 _pendingCounterattack：useAttack 注入 counterattack=1 且按单次攻击掷骰）
                 _counterattackBusyUntil = Date.now() + _COUNTERATTACK_BUSY_MS;
                 for (const item of counterItems) {
@@ -433,6 +487,13 @@ export class ActorDamageHelper {
                 // 保持 busy 窗口至自然过期（防止反击造成的伤害再次触发反击）
             } finally {
                 game.D35E._counterattackActive = Math.max(0, (game.D35E._counterattackActive || 0) - 1);
+                // [D35E]反击结束：恢复执行端反击前锁定；跨玩家时玩家端同样恢复
+                try {
+                    game.user.updateTokenTargets(prevTargets);
+                } catch (err) {
+                    /* 恢复失败不阻断 */
+                }
+                if (playerOwners.length) _sendTargetSync("restore", null, prevTargets, playerOwners);
             }
         } catch (err) {
             _counterattackBusyUntil = 0;

@@ -41,7 +41,7 @@
   {{!-- Item Sheet Navigation --}}
   <nav class="sheet-navigation tabs" data-group="primary">
     <a class="item active" data-tab="description">{{ localize "D35E.Description" }}</a>
-    <a class="item" data-tab="details">{{ localize "D35E.Details" }}</a>
+    <a class="item" data-tab="configuration" style="flex: 0 150px;">{{ localize "D35E.Configuration" }}</a>
   </nav>
 
   {{!-- Item Sheet Body --}}
@@ -55,8 +55,18 @@
     </div>
 
     {{!-- Details Tab --}}
-    <div class="tab details" data-group="primary" data-tab="details">
-      <h3 class="form-header">{{localize "D35E.SpellDetails"}}</h3>
+    <div class="tab flexcol active" data-group="primary" data-tab="configuration">
+      <nav class="sheet-navigation tabs subtabs configuration" data-group="configuration">
+        <a class="item active" data-tab="details">{{ localize "D35E.Details" }}</a>
+        {{#each registeredTabs as |tab|}}
+        <a class="item" data-tab="{{tab.id}}">{{tab.name}}</a>
+        {{/each}}
+      </nav>
+
+      <div class="flexrow configuration-container" style="overflow: hidden; height: 100%">
+        <section class="configuration-body" style="display: block; height: 100%">
+          <div class="tab configuration-group details" data-group="configuration" data-tab="details">
+            <h3 class="form-header">{{localize "D35E.SpellDetails"}}</h3>
 
       {{!-- Spellbook --}}
       {{#if owner}}
@@ -317,6 +327,15 @@
       <h3 class="form-header">系统属性</h3>
       {{> "systems/D35E/templates/items/components/uid-input.html"}}
       {{/if}}
+          </div>
+
+          {{#each registeredTabs as |tab|}}
+          <div class="tab configuration-group flexcol" data-group="configuration" data-tab="{{tab.id}}">
+            {{> (lookup tab 'sheet') ..}}
+          </div>
+          {{/each}}
+        </section>
+      </div>
     </div>
   </section>
   </section>

@@ -144,7 +144,13 @@ export function triggerBattleAnim(item, opts = {}) {
     let template = null;
     if (type === "ability" && item.hasTemplate) template = _findTemplate();
     // 行走图转向目标（近战/远程/治疗有目标时，攻击者面向目标方向）
-    if (from && target) setWalkFacing(from, _facingRow(target.center.x - from.center.x, target.center.y - from.center.y));
+    if (from && target) {
+      setWalkFacing(from, _facingRow(target.center.x - from.center.x, target.center.y - from.center.y));
+      // [D35E]sync facing to other clients even without anim file
+      if (!img && ["melee", "ranged", "heal"].includes(type)) {
+        _syncAnim({ type, fromTokenId: from.id, targetTokenId: target.id });
+      }
+    }
     // 白光：无论有无动画文件，使用者都闪一瞬白光
     if (from) _whiteFlash(from);
     if (!img) return;

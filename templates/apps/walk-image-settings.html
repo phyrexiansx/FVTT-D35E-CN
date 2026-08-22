@@ -8,9 +8,39 @@
       </button>
     </div>
     <p class="hint">
-      RPG Maker MV 行走图（3列×4行：第1行下 / 第2行左 / 第3行右 / 第4行上）。
-      移动时按方向播放 12321 帧乒乓，停止后回退到该方向的中间第2帧。
+      RPG Maker MV 行走图（默认 3列×4行：第1行下 / 第2行左 / 第3行右 / 第4行上，行数列数可自定义）。
+      移动时按循环方式播放帧（乒乓 12321 / 正向 123123），停止后回退到停留帧。
       不设置则行走图模式不启用（使用现有 Token 图标）。
+    </p>
+  </div>
+  <div class="form-group">
+    <label>拆分规则</label>
+    <div class="form-fields" style="gap: 6px;">
+      <span style="color: #aaa; font-size: 12px;">行数</span>
+      <input type="number" name="walkRows" value="{{walkRows}}" min="1" max="12" step="1" style="width: 60px;"/>
+      <span style="color: #aaa; font-size: 12px;">每行帧数</span>
+      <input type="number" name="walkCols" value="{{walkCols}}" min="1" max="12" step="1" style="width: 60px;"/>
+      <span style="color: #aaa; font-size: 12px;">停留帧</span>
+      <input type="number" name="walkIdleFrame" value="{{walkIdleFrame}}" min="1" max="12" step="1" style="width: 60px;"/>
+    </div>
+    <p class="hint">
+      帧图按 行数×每行帧数 切分（行序固定：下/左/右/上）。停留帧为停止时显示的帧号（从第1帧数起，默认第2帧）。
+    </p>
+  </div>
+  <div class="form-group">
+    <label>循环方式</label>
+    <div class="form-fields">
+      <select name="walkLoop" style="flex: 1;">
+        {{#select walkLoop}}
+        <option value="pingpong">乒乓循环（1 2 3 2 1 2 3…）</option>
+        <option value="forward">正向循环（1 2 3 1 2 3…）</option>
+        {{/select}}
+      </select>
+      <label style="flex: 0 0 auto; color: #aaa; font-size: 12px;">播放间隔(ms)</label>
+      <input type="number" name="walkInterval" value="{{walkInterval}}" min="0" max="2000" step="10" style="width: 80px;" placeholder="默认180"/>
+    </div>
+    <p class="hint">
+      循环方式仅影响移动时；受击图与异常状态图固定正向循环。播放间隔留空/0 使用系统默认（设置→行走图帧间隔）。
     </p>
   </div>
   <div class="form-group">
@@ -43,7 +73,7 @@
       </button>
     </div>
     <p class="hint">
-      受击瞬间切换为此图片（整图铺满 Token），与受击音效/染红特效同一时机，约 0.4 秒后自动恢复（有状态则恢复为异常行走图）。
+      受击瞬间切换为此图片（按上面的拆分规则切帧，固定正向循环播放），与受击音效/染红特效同一时机，约 0.4 秒后自动恢复（有状态则恢复为异常行走图）。
     </p>
   </div>
   <details class="walk-cond-config" style="margin: 8px 0; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 6px 8px;">

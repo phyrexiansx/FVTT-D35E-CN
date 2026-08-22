@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>D35E 角色伴侣</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root { --bg:#1a1d24; --card:#242833; --accent:#e8c36a; --ok:#6fcf97; --err:#e74c3c; --txt:#e8e8ec; --sub:#9aa0ab; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--txt); font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; padding-bottom:80px; }
+  .hidden { display:none !important; }
+  header { position:sticky; top:0; background:var(--bg); padding:12px 14px; display:flex; align-items:center; gap:10px; z-index:10; border-bottom:1px solid #2c303b; }
+  header h1 { font-size:17px; color:var(--accent); flex:1; }
+  header .conn { font-size:11px; color:var(--sub); }
+  header .dot { width:9px; height:9px; border-radius:50%; background:#666; display:inline-block; margin-right:5px; }
+  header .dot.on { background:var(--ok); }
+  section { margin:10px 12px; background:var(--card); border-radius:10px; padding:12px; }
+  section h2 { font-size:13px; color:var(--accent); margin-bottom:10px; letter-spacing:1px; }
+  .row { display:flex; align-items:center; gap:8px; }
+  input, select, button { font-size:15px; border-radius:7px; border:1px solid #3a3f4c; background:#1f232d; color:var(--txt); padding:8px 10px; }
+  input { flex:1; min-width:0; }
+  button { cursor:pointer; }
+  button:active { transform:scale(.96); }
+  .btn-primary { background:var(--accent); color:#1a1d24; font-weight:600; border:none; }
+  .btn-ghost { background:#2c3140; border:1px solid #3a3f4c; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat { background:#1f232d; border-radius:8px; padding:8px 4px; text-align:center; cursor:pointer; }
+  .stat .k { font-size:11px; color:var(--sub); }
+  .stat .v { font-size:19px; font-weight:700; margin-top:2px; }
+  .stat.small { display:flex; align-items:center; justify-content:center; gap:6px; padding:10px 6px; }
+  .stat.small .v { font-size:16px; margin:0; }
+  .list { max-height:40vh; overflow-y:auto; }
+  .item { display:flex; align-items:center; gap:8px; padding:8px 2px; border-bottom:1px solid #2c303b; }
+  .item:last-child { border-bottom:none; }
+  .item .n { flex:1; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .d { font-size:11px; color:var(--sub); }
+  .hpbar { height:10px; background:#1f232d; border-radius:5px; overflow:hidden; margin:8px 0; }
+  .hpbar > div { height:100%; background:var(--ok); width:100%; }
+  .big { font-size:24px; font-weight:700; }
+  .muted { color:var(--sub); font-size:12px; }
+  .err { color:var(--err); font-size:13px; margin-top:6px; }
+  .chip { background:#2c3140; border-radius:20px; padding:3px 10px; font-size:12px; color:var(--sub); }
+  .ops { position:fixed; bottom:0; left:0; right:0; background:var(--bg); padding:10px 12px; display:flex; gap:8px; border-top:1px solid #2c303b; }
+  .ops button { flex:1; }
+  #toast { position:fixed; top:12px; left:50%; transform:translateX(-50%); background:#2c3140; color:var(--txt); padding:8px 16px; border-radius:20px; font-size:13px; z-index:99; opacity:0; transition:opacity .3s; pointer-events:none; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>D35E 角色伴侣</h1>
+  <span class="conn"><span class="dot" id="dot"></span><span id="connTxt">未连接</span></span>
+</header>
+
+<!-- 连接设置 -->
+<section id="setupSec">
+  <h2>连接设置</h2>
+  <div class="row" style="margin-bottom:8px;"><input id="inServer" placeholder="服务器地址" value=""></div>
+  <div class="row" style="margin-bottom:8px;"><input id="inUuid" placeholder="角色 UUID（角色卡配置页复制）"></div>
+  <div class="row"><input id="inKey" type="password" placeholder="API 密钥"><button class="btn-primary" id="btnConnect" style="flex:0 0 70px;">连接</button></div>
+  <div class="err hidden" id="setupErr"></div>
+</section>
+
+<!-- 角色卡 -->
+<div id="mainSec" class="hidden">
+  <section>
+    <div class="row" style="justify-content:space-between;">
+      <h2 style="margin:0;" id="charName">角色</h2>
+      <span class="chip" id="charLevel"></span>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <span class="muted">生命值</span>
+      <button class="btn-ghost" id="hpMinus5" style="flex:0 0 40px;">-5</button>
+      <button class="btn-ghost" id="hpMinus1" style="flex:0 0 40px;">-1</button>
+      <span class="big" id="hpVal"></span>
+      <button class="btn-ghost" id="hpPlus1" style="flex:0 0 40px;">+1</button>
+      <button class="btn-ghost" id="hpPlus5" style="flex:0 0 40px;">+5</button>
+    </div>
+    <div class="hpbar"><div id="hpBar"></div></div>
+    <div class="grid" style="margin-top:10px;">
+      <div class="stat small"><span class="k">AC</span><span class="v" id="acVal"></span></div>
+      <div class="stat small"><span class="k">先攻</span><span class="v" id="initVal"></span></div>
+      <div class="stat small" id="restBtn"><span class="k">休息</span><span class="v" style="font-size:14px;">⌁</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>属性（点击掷骰）</h2>
+    <div class="grid" id="abilityGrid"></div>
+  </section>
+
+  <section>
+    <h2>豁免（点击掷骰）</h2>
+    <div class="grid" id="saveGrid"></div>
+  </section>
+
+  <section>
+    <h2>技能（点击掷骰）</h2>
+    <div class="list" id="skillList"></div>
+  </section>
+
+  <section>
+    <h2>物品（点击使用）</h2>
+    <div class="list" id="itemList"></div>
+  </section>
+</div>
+
+<div class="ops">
+  <button class="btn-ghost" id="btnRefresh">刷新</button>
+  <button class="btn-ghost" id="btnDisconnect">断开</button>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = { server:'', uuid:'', key:'', data:null, timer:null, socket:null };
+
+function toast(msg, ok = true) {
+  const t = $('toast'); t.textContent = msg; t.style.background = ok ? '#2c3140' : 'var(--err)';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000);
+}
+function setConn(ok, txt) { $('dot').className = 'dot' + (ok ? ' on' : ''); $('connTxt').textContent = txt; }
+
+const ABIL_CN = { str:'力量', dex:'敏捷', con:'体质', int:'智力', wis:'感知', cha:'魅力' };
+const SAVE_CN = { fort:'强韧', ref:'反射', will:'意志' };
+const SKILL_CN = {
+  acrobatics:'特技', appraise:'估价', bluff:'唬骗', climb:'攀爬', craft:'手艺', diplomacy:'交涉',
+  disableDevice:'解除装置', disguise:'易容', escapeArtist:'脱逃', fly:'飞行', handleAnimal:'驯养动物',
+  heal:'医疗', intimidate:'威吓', linguistics:'语言学', perception:'察觉', perform:'表演',
+  profession:'专业', ride:'骑术', senseMotive:'察言观色', sleightOfHand:'手上功夫',
+  spellcraft:'法术辨识', stealth:'隐匿', survival:'生存', swim:'游泳', useMagicDevice:'使用魔法装置'
+};
+
+function toast(msg, ok = true) {
+  const t = $('toast'); t.textContent = msg; t.style.background = ok ? '#2c3140' : 'var(--err)';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000);
+}
+function setConn(ok, txt) { $('dot').className = 'dot' + (ok ? ' on' : ''); $('connTxt').textContent = txt; }
+
+async function api(path, method = 'GET', body = null) {
+  const res = await fetch(state.server + path, {
+    method, headers: { 'API-KEY': state.key, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : null
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+function skillName(key) {
+  if (SKILL_CN[key]) return SKILL_CN[key];
+  if (key.startsWith('knowledge.')) return '知识（' + key.split('.').pop() + '）';
+  if (key.startsWith('craft.')) return '手艺（' + key.split('.').pop() + '）';
+  if (key.startsWith('perform.')) return '表演（' + key.split('.').pop() + '）';
+  if (key.startsWith('profession.')) return '专业（' + key.split('.').pop() + '）';
+  return key;
+}
+function sendAction(action, params) {
+  // 实时通道：socket（不写队列）
+  if (state.socket && state.socket.connected) {
+    state.socket.emit('action', { room: state.uuid, action, params });
+    toast('已发送：' + action);
+    return;
+  }
+  // 兜底：REST 队列（Foundry 轮询 3s 内取走）
+  api('api/character/actions/' + state.uuid, 'POST', { action, params })
+    .then(() => toast('已发送：' + action)).catch((e) => toast('发送失败: ' + e.message, false));
+}
+
+async function loadCharacter() {
+  try {
+    state.data = await api('api/character/' + state.uuid);
+    render();
+    setConn(true, '已连接 · ' + new Date().toLocaleTimeString());
+  } catch (e) { setConn(false, '拉取失败'); toast('拉取失败: ' + e.message, false); }
+}
+
+function render() {
+  const d = state.data, s = d.system || {}, a = s.attributes || {}, ab = s.abilities || {};
+  $('charName').textContent = d.name;
+  $('charLevel').textContent = 'Lv.' + (s.details?.level?.available ?? s.details?.level?.value ?? '?');
+  const hp = a.hp || {};
+  $('hpVal').textContent = (hp.value ?? 0) + ' / ' + (hp.max ?? 0);
+  $('hpBar').style.width = (hp.max ? Math.max(0, Math.min(100, hp.value / hp.max * 100)) : 0) + '%';
+  $('acVal').textContent = a.ac?.normal?.total ?? '?';
+  $('initVal').textContent = (a.init?.total > 0 ? '+' : '') + (a.init?.total ?? '?');
+
+  const ag = $('abilityGrid'); ag.innerHTML = '';
+  for (const k of ['str','dex','con','int','wis','cha']) {
+    const mod = ab[k]?.mod ?? 0;
+    const el = document.createElement('div');
+    el.className = 'stat';
+    el.innerHTML = `<div class="k">${ABIL_CN[k]} ${k.toUpperCase()}</div><div class="v">${mod > 0 ? '+' + mod : mod}</div>`;
+    el.onclick = () => sendAction('ability', k);
+    ag.appendChild(el);
+  }
+
+  const sg = $('saveGrid'); sg.innerHTML = '';
+  const st = a.savingThrows || {};
+  for (const k of ['fort','ref','will']) {
+    const total = st[k]?.total ?? 0;
+    const el = document.createElement('div');
+    el.className = 'stat';
+    el.innerHTML = `<div class="k">${SAVE_CN[k]}</div><div class="v">${total > 0 ? '+' + total : total}</div>`;
+    el.onclick = () => sendAction('save', k);
+    sg.appendChild(el);
+  }
+
+  const sl = $('skillList'); sl.innerHTML = '';
+  const skills = s.skills || {};
+  const keys = Object.keys(skills).sort();
+  for (const k of keys) {
+    const sk = skills[k];
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `<span class="n">${skillName(k)}</span><span class="d">${sk.value ?? 0}</span>`;
+    el.onclick = () => sendAction('rollSkill', k);
+    sl.appendChild(el);
+  }
+
+  const il = $('itemList'); il.innerHTML = '';
+  const useTypes = ['weapon','equipment','loot','consumable','valuable','card'];
+  const items = (d.items || []).filter((i) => useTypes.includes(i.type));
+  for (const it of items) {
+    const q = it.system?.quantity ?? 1;
+    const eq = it.type === 'equipment' ? (it.system?.equipped ? ' 装备中' : ' 未装备') : '';
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `<span class="n">${it.name}</span><span class="d">x${q}${eq}</span>`;
+    el.onclick = () => sendAction('useItem', it._id || it.id);
+    il.appendChild(el);
+  }
+}
+
+function changeHp(delta) {
+  const hp = state.data?.system?.attributes?.hp;
+  if (!hp) return;
+  const next = Math.max(0, (hp.value ?? 0) + delta);
+  sendAction('updateActor', { 'system.attributes.hp.value': next });
+}
+
+// ---- 事件绑定 ----
+$('btnConnect').onclick = () => {
+  const server = ($('inServer').value || location.origin).replace(/\/+$/, '') + '/';
+  const uuid = $('inUuid').value.trim(), key = $('inKey').value.trim();
+  if (!uuid) { $('setupErr').textContent = '请填写角色 UUID'; $('setupErr').classList.remove('hidden'); return; }
+  state = { server, uuid, key, data: null, timer: null, socket: null };
+  $('setupSec').classList.add('hidden');
+  $('mainSec').classList.remove('hidden');
+  // 连接实时 socket
+  try {
+    state.socket = io(server);
+    state.socket.on('connect', () => setConn(true, '实时已连接'));
+    state.socket.on('disconnect', () => setConn(false, '实时断开（走轮询）'));
+  } catch (e) { setConn(false, '实时不可用（走轮询）'); }
+  loadCharacter();
+  state.timer = setInterval(loadCharacter, 5000);
+};
+$('btnDisconnect').onclick = () => {
+  clearInterval(state.timer); state.timer = null;
+  $('mainSec').classList.add('hidden'); $('setupSec').classList.remove('hidden');
+  setConn(false, '未连接');
+};
+$('btnRefresh').onclick = loadCharacter;
+$('hpMinus5').onclick = () => changeHp(-5);
+$('hpMinus1').onclick = () => changeHp(-1);
+$('hpPlus1').onclick = () => changeHp(1);
+$('hpPlus5').onclick = () => changeHp(5);
+$('restBtn').onclick = () => sendAction('rest');
+
+// 默认服务器地址 = 当前页面来源（手机直接访问本服务时自动填好）
+$('inServer').value = location.origin;
+</script>
+</body>
+</html>

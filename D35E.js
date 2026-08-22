@@ -123,6 +123,7 @@ import './module/mods/narrator-tools/context-menu.min.js'; // narrator-tools 依
 import './module/mods/narrator-tools/narrator.js'; // 内置 Narrator Tools（v0.79：旁白/描述/笔记聊天卡，/desc /narrat /not 命令）
 import './module/mods/storyteller/turn.min.js'; // storyteller 翻页库（$.fn.turn，先于 main.js 加载）
 import './module/mods/storyteller/main.js'; // 内置 Storyteller（v1.2.0：故事书式日志卡）
+import './module/polyglot/polyglot.js';
 
 // [D35E]内置模组资源清单（样式注入与语言合并共用；{ id: 目录名, styles: 相对 css 路径, langs: 可用语言文件名 }）
 const BUNDLED_MODS = [
@@ -133,7 +134,7 @@ const BUNDLED_MODS = [
 // [D35E]内置模组以模块 scope 读写 flags：内置后模组未启用，getFlag/setFlag/unsetFlag 会报
 // "Flag scope 无效"（如 narrator-tools 读取旁白消息类型），此处对内置模组的 scope 放行
 //（数据仍存 flags.<scope>，兼容旧数据；与 gm-screen 移除前相同的方案，改为通用）
-const BUNDLED_FLAG_SCOPES = ["narrator-tools", "storyteller"];
+const BUNDLED_FLAG_SCOPES = ["narrator-tools", "storyteller", "polyglot"];
 
 /** 放行内置模组的 flags 读写（patch foundry.abstract.Document，幂等） */
 function _patchBundledFlagScopes() {
@@ -546,18 +547,25 @@ Hooks.once("ready", async function () {
   registerChatDrag();
   registerChatExport(); // [D35E]聊天记录导出（GM）
 
-  // [D35E]玩家伴侣服务探测：未启动时提示（仅 GM，每会话一次）
+  // [D35E]玩家伴侣状态：由服务器启动时写入 status.json（D35E 不再主动探测），登录时读取一次提示 GM
   if (game.user.isGM) {
-    const serverUrl = (game.settings.get("D35E", "companionServerUrl") || "").replace(/\/+$/, "");
-    if (serverUrl) {
-      try {
-        const res = await fetch(serverUrl + "/health", { signal: AbortSignal.timeout(1500) });
-        if (!res.ok) throw new Error("bad");
-      } catch (e) {
-        ui.notifications.warn("玩家伴侣服务未启动：请双击 companion-server\\start.bat 启动（或检查开机自启）。");
-      }
+    try {
+      const res = await fetch("/systems/D35E/companion-server/status.json", { signal: AbortSignal.timeout(1500) });
+      const st = await res.json().catch(() => null);
+      if (st && st.running) ui.notifications.info("玩家伴侣服务已连接。");
+      else throw new Error("no-status");
+    } catch (e) {
+      ui.notifications.warn("玩家伴侣没有启动");
     }
   }
+  // [D35E]角色自动同步：角色卡存在伴侣 UUID 时，数据更新后自动推送到伴侣服务（防抖）
+  Hooks.on("updateActor", (actor) => {
+    if (!game.user?.isGM) return;
+    if (!getProperty(actor.system, "companionUuid")) return;
+    if (!actor.isCompanionSetUp) return;
+    clearTimeout(actor._companionSyncTimer);
+    actor._companionSyncTimer = setTimeout(() => actor.syncToCompendium(false), 2000);
+  });
   $("body").toggleClass("d35gm", game.user.isGM);
   $("body").toggleClass("hide-special-action", !game.settings.get("D35E", "allowPlayersApplyActions"));
   $("body").toggleClass("transparent-sidebar", game.settings.get("D35E", "transparentSidebarWhenUsingTheme"));

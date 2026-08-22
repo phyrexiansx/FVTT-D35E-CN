@@ -52,6 +52,14 @@ export function setupItemDragPreview(html) {
 }
 
 /**
+ * [§83]当前拖拽的源行是否位于专长/特性文件夹内（供文件夹 drop 处理器判断是否放行排序）
+ * @returns {boolean}
+ */
+export function isDragSourceInFolder() {
+  return !!_dragState?.sourceInFolder;
+}
+
+/**
  * 拖拽开始：生成预览卡并设为拖拽图，源行加浮起样式
  * @param {DragEvent} ev 原生拖拽事件（addEventListener 直接绑定）
  */
@@ -64,7 +72,8 @@ function _onDragStartVisual(ev) {
   const dataTransfer = ev.originalEvent?.dataTransfer || ev.dataTransfer;
   if (dataTransfer?.setDragImage) dataTransfer.setDragImage(preview, 24, 12);
   li.classList.add(DRAGGING_CLASS);
-  _dragState = { source: li, preview, target: null };
+  // [§83]记录源行是否在专长/特性文件夹内（文件夹内拖动到内部行时放行给核心排序）
+  _dragState = { source: li, preview, target: null, sourceInFolder: !!li.closest(".feature-folder") };
 }
 
 /**
@@ -75,15 +84,7 @@ function _onDragOverVisual(ev) {
   if (!_dragState) return;
   _clearTargetHighlight();
   const t = ev.target;
-  // 文件夹优先：整块（含内部物品行）都视为文件夹目标
-  const folderEl = t.closest ? t.closest(".feature-folder") : null;
-  if (folderEl) {
-    folderEl.classList.add(FOLDER_OVER_CLASS);
-    _expandCollapsedFolder(folderEl);
-    _dragState.target = folderEl;
-    return;
-  }
-  // 物品/技能行：按指针垂直位置决定插入线（上/下）
+  // [§83]物品/技能行优先（含文件夹内部行）：按指针垂直位置决定插入线（上/下），支持文件夹内排序反馈
   const rowEl = t.closest ? t.closest("li.item, li.skill") : null;
   if (rowEl && !rowEl.classList.contains("inventory-header")) {
     const rect = rowEl.getBoundingClientRect();
@@ -91,6 +92,14 @@ function _onDragOverVisual(ev) {
     rowEl.classList.add(TARGET_CLASS);
     rowEl.classList.add(before ? BEFORE_CLASS : AFTER_CLASS);
     _dragState.target = rowEl;
+    return;
+  }
+  // 文件夹（非行区域，如头部/空白）：整块视为文件夹目标，虚线高亮并自动展开
+  const folderEl = t.closest ? t.closest(".feature-folder") : null;
+  if (folderEl) {
+    folderEl.classList.add(FOLDER_OVER_CLASS);
+    _expandCollapsedFolder(folderEl);
+    _dragState.target = folderEl;
   }
 }
 

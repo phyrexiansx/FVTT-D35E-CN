@@ -82,7 +82,7 @@ export class ItemChatData {
 
     // General equipment properties
     const props = [];
-    if (itemChatData.hasOwnProperty("equipped") && ["weapon", "equipment"].includes(this.item.data.type)) {
+    if (itemChatData.hasOwnProperty("equipped") && ["weapon", "equipment"].includes(this.item.type)) {
       props.push(itemChatData.equipped ? game.i18n.localize("D35E.Equipped") : game.i18n.localize("D35E.NotEquipped"));
     }
     if (this.item.broken) {
@@ -173,7 +173,7 @@ export class ItemChatData {
       }
 
       // Item type specific properties
-      const fn = this[`_${this.item.data.type}ChatData`];
+      const fn = this[`_${this.item.type}ChatData`];
       if (fn) fn.bind(this)(itemChatData, labels, props);
 
       // Ability activation properties

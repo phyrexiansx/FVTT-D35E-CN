@@ -139,7 +139,7 @@ class EditorV2 extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext(options) {
 
     // Prepare possible speakers for selectOptions
-    const chars = game.scenes.viewed.tokens.values().reduce((acc, t) => {
+    const chars = (game.scenes.viewed?.tokens ? Array.from(game.scenes.viewed.tokens.values()) : []).reduce((acc, t) => {
       if (t.isOwner) acc.push({
         value: t.id,
         label: t.actor?.name,
@@ -225,7 +225,7 @@ class Editor extends FormApplication {
     // Prepare possible speakers for optgroups only if they have valid members
     const player = [{ value: game.user.id, name: game.user.name }];
     const characters = Object.entries(CONFIG.Actor.typeLabels).map(([type, label]) => ({
-      actors: Array.from(game.scenes.viewed.tokens.values()).reduce((acc, t) => {
+      actors: Array.from(game.scenes.viewed?.tokens?.values?.() ?? []).reduce((acc, t) => {
         if (t.actor?.type === type && t.isOwner) acc.push({
           value: t.id,
           name: t.actor?.name
@@ -346,18 +346,23 @@ class Editing {
     } else {
 
       // Handle in character messages
-      const token = game.scenes.viewed.tokens.get(id);
-      speaker = ChatMessage.getSpeaker({ token });
+      const token = game.scenes.viewed?.tokens?.get(id);
+      if (token) {
+        speaker = ChatMessage.getSpeaker({ token });
 
-      // Handle emotes
-      if (content.startsWith(token.name)) style = CHATEDIT_CONST.CHAT_MESSAGE_STYLES.EMOTE;
-      else style = CHATEDIT_CONST.CHAT_MESSAGE_STYLES.IC;
+        // Handle emotes
+        if (content.startsWith(token.name)) style = CHATEDIT_CONST.CHAT_MESSAGE_STYLES.EMOTE;
+        else style = CHATEDIT_CONST.CHAT_MESSAGE_STYLES.IC;
+      } else {
+        speaker = ChatMessage.getSpeaker({ user });
+        style = CHATEDIT_CONST.CHAT_MESSAGE_STYLES.OOC;
+      }
     }
     // Don't destroy the alias
     if (data.alias) foundry.utils.mergeObject(speaker, { alias: data.alias });
 
-    // Handle (don't destroy) markdown
-    if (game.settings.get(MODULE_SETTINGS, SETTINGS.MARKDOWN)) {
+    // Handle (don't destroy) markdown - [D35E] 含 HTML 标签的内容跳过 markdown 解析
+    if (game.settings.get(MODULE_SETTINGS, SETTINGS.MARKDOWN) && !/<[a-zA-Z][^>]*>/.test(content)) {
 
       // Create the parser and parse
       const parser = new showdown.Converter({ extensions: ["inline"] });
@@ -388,8 +393,8 @@ class Editing {
     speaker.addEventListener('change', () => {
       if (game.users.get(speaker.value)) alias.value = null;
       else {
-        const token = game.scenes.viewed.tokens.get(speaker.value);
-        alias.setAttribute('value', ChatMessage.getSpeaker({ token }).alias);
+        const token = game.scenes.viewed?.tokens?.get(speaker.value);
+        alias.setAttribute('value', token ? ChatMessage.getSpeaker({ token }).alias : '');
       }
     });
   }
@@ -586,6 +591,8 @@ class ProcessChat {
     if (message.isRoll) return;
     if (message.content.includes('<button')) return;
     if (message.content.includes('class=\"action')) return;
+    // [D35E] 内容已含 HTML 标签（核心 NUE 欢迎消息/系统卡片等）时跳过 markdown 解析，避免破坏 HTML
+    if (/<[a-zA-Z][^>]*>/.test(message.content)) return;
     if (!foundry.utils.isEmpty(message.flags?.[game.system.id])) return;
 
     // The id of the user making the message

@@ -60,13 +60,13 @@
           {{#ifeq lootsheettype "Merchant"}}
           {{#if hasPlayerCharacter}}
           {{#unless isPatreonEnabled}}
-          <a class="item header-button tooltip grayed">
+          <a class="item tooltip grayed">
             <span class="tooltipcontent">{{localize "D35E.patreonLocked"}}</span>
             {{localize "D35E.ls.sell"}}
             <i class="fas fa-lock"></i>
           </a>
           {{else}}
-          <a class="item header-button" data-tab="player-inventory">
+          <a class="item" data-tab="player-inventory">
             {{localize "D35E.ls.sell"}}
           </a>
           {{/unless}}

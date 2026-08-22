@@ -1,5 +1,30 @@
 import { CR } from "../lib.js";
 
+// [优化] 单次渲染条目上限：资源过多时避免整表渲染卡死（搜索/筛选在数据层过滤后重渲染）
+const _MAX_RENDER = 200;
+
+// [优化] 列表 partial（渐进/局部刷新用）：注册一次，渲染前兜底确保存在
+const _LIST_PARTIAL = "systems/D35E/templates/apps/compendium-browser-list.html";
+async function _ensureListPartial() {
+  if (!Handlebars.partials?.[_LIST_PARTIAL]) {
+    const tpl = await getTemplate(_LIST_PARTIAL);
+    Handlebars.registerPartial(_LIST_PARTIAL, tpl);
+  }
+}
+Hooks.once("ready", () => _ensureListPartial().catch(() => {}));
+
+// [优化] 合集轻量索引字段（各类型并集）：搜索器用 getIndex 而非 getDocuments，
+// 不实例化 Document（不触发 prepareData，海量条目不再报错/卡顿），点击条目时才加载单条
+const _INDEX_FIELDS = [
+  "system.level", "system.school", "system.subschool", "system.types",
+  "system.learnedAt.class", "system.learnedAt.domain", "system.learnedAt.subDomain",
+  "system.learnedAt.elementalSchool", "system.learnedAt.bloodline",
+  "system.featType", "system.tags", "system.associations.classes",
+  "system.enhancementType", "system.allowedTypes", "system.properties",
+  "system.uniqueId", "system.snip", "system.details.cr", "system.attributes.creatureType",
+];
+
+
 export class CompendiumBrowser extends Application {
   constructor(...args) {
     super(...args);
@@ -34,6 +59,7 @@ export class CompendiumBrowser extends Application {
     this.entityType = entityType;
     this.activeFilters = activeFilters;
     this.extraFilters = null;
+    this._filtered = null; // [优化] 清除上次搜索结果
     // [修复-竞态] 丢弃在途加载的 Promise，并递增代际令牌，令旧加载失效
     this._data.promise = null;
     this._loadToken = (this._loadToken || 0) + 1;
@@ -68,6 +94,8 @@ export class CompendiumBrowser extends Application {
         if (token !== this._loadToken) return; // [修复-竞态] 已被切换，丢弃旧加载结果
         this._data.loaded = true;
         this._data.promise = null;
+        // [修复] 加载完成后应用默认来源勾选（含 _filtered 预置）；非法术/专长 tab 内部直接返回
+        this._applyDefaultFilters();
 
         $("#d35e-compendium-browser-loader").hide();
         this.render(false);
@@ -87,6 +115,21 @@ export class CompendiumBrowser extends Application {
       type: this.type,
       entityType: this.entityType,
     };
+    // [默认] 应用默认来源勾选（法术=法术+灵能合集合集；专长=专长合集合集）
+    this._applyDefaultFilters();
+  }
+
+  // [默认] 法术/专长默认只显示指定来源的合集合集（pack id 不存在时自动跳过）
+  _applyDefaultFilters() {
+    if (this.type !== "spells" && this.type !== "feats") return;
+    const defaults = this.type === "spells" ? ["D35E.spells", "D35E.powers"] : ["D35E.feats"];
+    const available = (this.compendiumSources.items || []).map((i) => i.key);
+    const pack = defaults.filter((id) => available.includes(id));
+    if (!pack.length) return;
+    this.activeFilters["pack"] = pack;
+    this.filterQuery = this.filterQuery || /.*/;
+    const list = (this._system?.collection || []).filter((e) => this._passesFilters(e.item));
+    this._filtered = list;
   }
 
   static get defaultOptions() {
@@ -132,10 +175,10 @@ export class CompendiumBrowser extends Application {
     for (let p of game.packs.values()) {
       if (p.private && !game.user.isGM) continue;
       if ((p.entity || p.documentName) !== this.entityType) continue;
-      // [缓存] 原始文档整个会话只读取一次，之后所有类型复用
+      // [缓存] 轻量索引整个会话只读一次（不实例化 Document，海量条目也不报错/卡顿）
       let docs = this._docCache[p.metadata.id];
       if (!docs) {
-        docs = await p.getDocuments();
+        docs = await p.getIndex({ fields: _INDEX_FIELDS });
         if (token !== this._loadToken) return; // [修复-竞态] 加载期间标签被切换，丢弃本次结果
         this._docCache[p.metadata.id] = docs;
       }
@@ -149,6 +192,11 @@ export class CompendiumBrowser extends Application {
       $("#d35e-compendium-browser-loader-bar").css("width", `${loadedPercent}%`);
       if (addedItems)
         this.compendiumSources.items.push({ key: `${p.metadata.id}`, name: `${p.metadata.label} (${p.metadata.id})` });
+      // [优化] 渐进加载：每完成一个合集合集就刷新一次列表（边加载边显示，首次打开不再白等）
+      this._system = { ...(this._system || {}), collection: this.items.slice() };
+      const label = this.element?.find("#d35e-compendium-browser-loader-label");
+      if (label?.length) label.text(`正在加载… ${this.items.length} 条（${this.compendiumSources.items.length + 1}/${packCount} 合集合集）`);
+      this._renderList();
     }
     this.items.sort((a, b) => {
       if (a.item.name < b.item.name) return -1;
@@ -206,7 +254,8 @@ export class CompendiumBrowser extends Application {
       issystem: pack.metadata.packageName === "D35E",
       item: {
         _id: item._id,
-        uuid: item.uuid,
+        // [优化] index 条目无 uuid，按 Compendium 约定构造（点击打开时 fromUuid 再实例化单条）
+        uuid: `Compendium.${pack.collection}.Item.${item._id}`,
         name: item.name,
         type: item.type,
         img: item.img,
@@ -373,7 +422,7 @@ export class CompendiumBrowser extends Application {
       }
 
       // Add CR filters
-      if (item.data.type === "npc") {
+      if (item.type === "npc") {
         const cr = getProperty(item.system, "details.cr");
         if (cr && !this.extraFilters["system.details.cr"].includes(cr))
           this.extraFilters["system.details.cr"].push(parseFloat(cr));
@@ -383,12 +432,53 @@ export class CompendiumBrowser extends Application {
     return result;
   }
 
+  // [优化] 可见列表：无搜索/无勾选分类时截断前 _MAX_RENDER 条；有搜索或分类筛选时渲染全部匹配
+  _visibleList(src) {
+    const q = this.filterQuery;
+    const hasQuery = q && q.source !== ".*" && q.source.length > 0;
+    // [默认] 来源(pack)勾选不触发全量渲染：默认/来源筛选结果通常很大，保持截断防卡死
+    const hasFilters = Object.entries(this.activeFilters || {}).some(([p, f]) => p !== "pack" && f && f.length > 0);
+    const showAll = hasQuery || hasFilters;
+    const list = showAll ? src : src.slice(0, _MAX_RENDER);
+    return { list, total: src.length, truncated: src.length > list.length };
+  }
+
+  // [优化] 只刷新结果列表区域（不重建筛选器，保持折叠/勾选/滚动位置）
+  async _renderList() {
+    await _ensureListPartial();
+    const src = this._filtered || this._system?.collection || [];
+    const v = this._visibleList(src);
+    try {
+      const html = await renderTemplate("systems/D35E/templates/apps/compendium-browser-list.html", {
+        collection: v.list,
+        totalCount: v.total,
+        truncated: v.truncated,
+      });
+      const container = this.element?.find(".directory-container");
+      if (container?.length) container.html(html);
+    } catch (err) {
+      /* 渐进渲染失败不阻断加载 */
+    }
+  }
+
   async getData() {
     if (!this._data.loaded) {
       this.loadData();
     }
-
-    return this._system;
+    const src = this._filtered || this._system?.collection || [];
+    const v = this._visibleList(src);
+    // [修复] 预计算筛选项勾选状态（render 重建后复选框与 activeFilters 保持一致）
+    const filters = (this._system?.filters || []).map((f) => ({
+      ...f,
+      items: f.items.map((it) => ({ ...it, checked: (this.activeFilters?.[f.path] || []).includes(it.key) })),
+    }));
+    return {
+      ...(this._system || {}),
+      filters,
+      collection: v.list,
+      totalCount: v.total,
+      truncated: v.truncated,
+    };
   }
 
   async refresh() {
@@ -396,6 +486,10 @@ export class CompendiumBrowser extends Application {
     this._docCache = {};
     this._typeCache = {};
     this._data.loaded = false;
+    this._filtered = null; // [优化] 清除旧搜索结果
+    // [优化] 先打开窗口：边加载边渐进显示（不再白等几十秒）
+    await _ensureListPartial();
+    this._render(true);
     await this.loadData();
   }
 
@@ -841,7 +935,10 @@ export class CompendiumBrowser extends Application {
   _onActivateBooleanFilter(event) {
     event.preventDefault();
     let input = event.currentTarget;
-    const path = input.closest(".filter").dataset.path;
+    const path = input.closest(".filter")?.dataset?.path;
+    if (!path || !this.activeFilters) return;
+    // [修复] 勾选状态数组可能未初始化（preset 未传 filters 时为空对象）
+    if (!Array.isArray(this.activeFilters[path])) this.activeFilters[path] = [];
     const key = input.name;
     const value = input.checked;
 
@@ -856,14 +953,11 @@ export class CompendiumBrowser extends Application {
     this._filterResults();
   }
 
+  // [优化] 数据层过滤 + 仅刷新列表区域（不再重建整个窗口，筛选器折叠/位置保持不变）
   _filterResults() {
-    this.element.find("li.directory-item").each((a, li) => {
-      const id = li.dataset.entryId;
-      let item = this.items.find((i) => i?.item?.uuid === id)?.item;
-      if (item) {
-        li.style.display = this._passesFilters(item) ? "flex" : "none";
-      }
-    });
+    const list = (this._system?.collection || []).filter((e) => this._passesFilters(e.item));
+    this._filtered = list;
+    this._renderList();
   }
 
   _passesFilters(item) {
@@ -871,6 +965,12 @@ export class CompendiumBrowser extends Application {
 
     for (let [path, filter] of Object.entries(this.activeFilters)) {
       if (filter.length === 0) continue;
+
+      // [修复] 合集合集来源筛选（条目 item 上存的是 pack，即 pack id）
+      if (path === "pack") {
+        if (!filter.includes(item.pack)) return false;
+        continue;
+      }
 
       // Handle special cases
       // Handle Spell Level
@@ -936,7 +1036,8 @@ export class CompendiumBrowser extends Application {
   }
 
 
-  static browseCompendium(type, entityType, filters = {}) {
+  static async browseCompendium(type, entityType, filters = {}) {
+    await _ensureListPartial();
     game.D35E.compendiumBrowser.preset(type, entityType, filters);
     game.D35E.compendiumBrowser._render(true);
   }

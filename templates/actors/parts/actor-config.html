@@ -77,7 +77,7 @@
         <label>受击音效</label>
         <div class="form-fields">
             <input type="text" name="flags.D35E.hitSoundFile" value="{{flags.D35E.hitSoundFile}}" placeholder="留空使用默认音效（Ctrl+V 可直接粘贴路径）" oncontextmenu="return true;" onkeydown="event.stopPropagation();" onpaste="event.stopPropagation();">
-            <button type="button" class="file-picker" data-d35e-hitfile title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-music"></i></button>
+            <button type="button" data-d35e-hitfile title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-music"></i></button>
         </div>
     </div>
     <span style="flex: 0">此角色受到伤害时播放该音效；留空则使用系统默认音效。</span>
@@ -85,7 +85,7 @@
         <label>非致命受击音效</label>
         <div class="form-fields">
             <input type="text" name="flags.D35E.nonLethalSoundFile" value="{{flags.D35E.nonLethalSoundFile}}" placeholder="留空使用默认（hit-2.wav）" oncontextmenu="return true;" onkeydown="event.stopPropagation();" onpaste="event.stopPropagation();">
-            <button type="button" class="file-picker" data-d35e-nlfile title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-heartbeat"></i></button>
+            <button type="button" data-d35e-nlfile title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-heartbeat"></i></button>
         </div>
     </div>
     <span style="flex: 0">此角色受到非致命伤害时播放该音效；留空则使用系统默认。</span>
@@ -94,14 +94,14 @@
         <label>N20音效</label>
         <div class="form-fields">
             <input type="text" name="flags.D35E.n20SoundFile" value="{{flags.D35E.n20SoundFile}}" placeholder="默认（se/N20.ogg）" oncontextmenu="return true;" onkeydown="event.stopPropagation();" onpaste="event.stopPropagation();">
-            <button type="button" class="file-picker" data-d35e-natfile data-nat="n20" title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-dice-d20"></i></button>
+            <button type="button" data-d35e-natfile data-nat="n20" title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-dice-d20"></i></button>
         </div>
     </div>
     <div class="form-group">
         <label>N1音效</label>
         <div class="form-fields">
             <input type="text" name="flags.D35E.n1SoundFile" value="{{flags.D35E.n1SoundFile}}" placeholder="默认（se/N1.ogg）" oncontextmenu="return true;" onkeydown="event.stopPropagation();" onpaste="event.stopPropagation();">
-            <button type="button" class="file-picker" data-d35e-natfile data-nat="n1" title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-dice"></i></button>
+            <button type="button" data-d35e-natfile data-nat="n1" title="选择音频" onkeydown="e.preventDefault();"><i class="fas fa-dice"></i></button>
         </div>
     </div>
     <span style="flex: 0">角色掷出自然20/自然1时播放对应音效；留空则使用系统默认。</span>
@@ -182,7 +182,7 @@
     {{/each}}
     </div>
 
-    <h2 class="block-header">巨龙遗产玩家伴侣（系统作者付费内容）</h2>
+    <h2 class="block-header">玩家伴侣</h2>
 
     {{#unless system.companionLockGM}}
     <div class="form-group" style="margin: 0 0.25rem;">

@@ -110,7 +110,7 @@ function targetAC(actor, touch) {
 function isAttackHit(attackTotal, target, touch, natural20, fumble) {
   if (fumble) return false;
   if (natural20) return true;
-  return attackTotal >= targetAC(target.actor, touch);
+  return true; // [修复]目标AC可能因接触攻击/特定情况降低，不以基础AC提前拦截，均进入对抗由对抗流程判定
 }
 
 /**逐目标自动检定法术抗力：true=穿透 / false=抵抗（不伤害不豁免） / null=留GM */
@@ -152,7 +152,7 @@ function getDamageButtonForSave(saveBtn) {
  * [D35E]未命中结算提示：攻击类（带豁免等）自动结算未命中时生成一条「未命中!」结算卡，
  * 复用 damage-description 模板（hit=false），让参与者知道发生了什么（修复：未命中被静默跳过）。
  */
-async function notifyMiss(targetActor, attackTotal, card) {
+async function notifyMiss(targetActor, attackTotal, card, acValue = null, acModifiers = []) {
     try {
     const attackerId = card.attr("data-actor-id");
     const attacker = attackerId ? game.actors.get(attackerId) : null;
@@ -181,9 +181,9 @@ async function notifyMiss(targetActor, attackTotal, card) {
         incorporealMiss: false,
         incorporealRolled: false,
       },
-      ac: {},
+      ac: acValue != null ? { ac: acValue } : {},
       actions: [],
-      acModifiers: [],
+      acModifiers,
       concealMiss: false,
       isSpell: false,
       applyHalf: false,
@@ -299,28 +299,34 @@ async function settleWithSave(card, saveBtn, srBtn, targets) {
             //攻击类（mwak/rwak/msak/rsak）：不论是否有豁免效果，先进行 AC 对抗 +伤害检定
       //1) AC 命中门：未命中 →不伤害、不豁免
       if (!isAttackHit(attackTotal, { actor: a }, touch, natural20, fumble)) {
-        // [D35E]未命中也输出一条结算提示（让参与者知道发生了什么，而不是静默跳过）
-                notifyMiss(a, attackTotal, card).catch(() => {});
-        // [D35E]自动结算兼容：「未命中也触发反击」的反击攻击在未命中结算后自动触发（提示卡异步生成，不阻塞反击）
-        try {
-          const dbtn =
-            damageBtn?.get?.(0) || damageBtn?.[0] || card.find('[data-action="applyDamage"]').get(0);
-                    if (dbtn?.dataset?.attacker) {
-            ActorDamageHelper.tryCounterattack(
-              a,
-              dbtn.dataset.attacker,
-              dbtn.dataset.attackertoken || null,
-              dbtn,
-              { hit: false, damageDealt: false }
-            ).catch((err) => console.error("D35E | Counterattack(miss) failed", err));
-          }
-        } catch (err) {
-          /*忽略 */
-        }
-        continue;
-      }
-      //2) 伤害检定：命中 →应用全伤（豁免结果不再影响伤害）
-      await applyDamageToTarget(a, damageBtn, { half: false, hpBase: base.v });
+ // [D35E]自然1必失：未命中也输出一条结算提示（让参与者知道发生了什么，而不是静默跳过）
+ notifyMiss(a, attackTotal, card, targetAC(a, touch)).catch(() => {});
+ // [D35E]自动结算兼容：「未命中也触发反击」的反击攻击在未命中结算后自动触发（提示卡异步生成，不阻塞反击）
+ try {
+ const dbtn = damageBtn?.get?.(0) || damageBtn?.[0] || card.find('[data-action="applyDamage"]').get(0);
+ if (dbtn?.dataset?.attacker) {
+ ActorDamageHelper.tryCounterattack(a, dbtn.dataset.attacker, dbtn.dataset.attackertoken || null, dbtn, { hit: false, damageDealt: false }).catch((err) => console.error("D35E | Counterattack(miss) failed", err));
+ }
+ } catch (err) { /*忽略*/ }
+ continue;
+}
+// [修复]AC对抗：攻击检定（即使低于基础AC）一律进入对抗——目标AC可能因接触攻击/特定情况降低，
+// 不能以基础AC提前拦截；接触攻击用接触AC；自动结算静默判定，阻止自动结算时弹窗
+const defRes = await a.rollDefenseDialog({ ev: {}, touch, flatfooted: false, skipDialog: targetAutoSettle(a) });
+if (defRes.ac === -1) continue; //目标取消防御
+if (!(attackTotal >= defRes.ac || natural20 || defRes.noCheck)) {
+ //对抗后未命中：结算提示 + 未命中反击（与自然1一致的处理）
+ notifyMiss(a, attackTotal, card, defRes.ac, defRes.acModifiers || []).catch(() => {});
+ try {
+ const dbtn = damageBtn?.get?.(0) || damageBtn?.[0] || card.find('[data-action="applyDamage"]').get(0);
+ if (dbtn?.dataset?.attacker) {
+ ActorDamageHelper.tryCounterattack(a, dbtn.dataset.attacker, dbtn.dataset.attackertoken || null, dbtn, { hit: false, damageDealt: false }).catch((err) => console.error("D35E | Counterattack(miss) failed", err));
+ }
+ } catch (err) { /*忽略*/ }
+ continue;
+}
+//2) 伤害检定：命中 →应用全伤（豁免结果不再影响伤害）
+await applyDamageToTarget(a, damageBtn, { half: false, hpBase: base.v });
       //无害：跳过法抗与豁免（豁免按钮存在但标记无害）
       if (harmless) continue;
       //3) 法术抗力（若有）：自动检定，穿透失败 →跳过豁免（伤害已先行结算，不受影响）

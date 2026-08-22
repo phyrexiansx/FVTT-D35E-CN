@@ -376,10 +376,7 @@ export class ItemSheetPF extends ItemSheet {
 
     sheetData.fieldList = Object.keys(flattenObject(this.item.system));
 
-    if (this.item.type === "buff") {
-      sheetData.hasCombatChanges = true;
-    }
-    if (this.item.type === "aura") {
+    if (this.item.type === "buff" || this.item.type === "aura" || this.item.type === "spell") {
       sheetData.hasCombatChanges = true;
     }
 

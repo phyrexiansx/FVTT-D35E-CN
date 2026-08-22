@@ -979,7 +979,7 @@ export class ActorPF extends Actor {
     if (itemData) {
       if (itemData._id) delete itemData._id;
       if (itemData.document)
-        itemData.document.data.update({
+        itemData.document.updateSource({
           'system.level': parseInt(level),
           'system.-=spellbook': null,
         });
@@ -3359,7 +3359,8 @@ export class ActorPF extends Actor {
     let rollData = this.getRollData(null, true);
     // 自动防御对抗（直觉自动结算）：跳过对话框，直接以基础 AC + 被动 combat changes 结算
     if (skipDialog) {
-      const result = await _roll.call(this, 'normal', null);
+              const acType = touch ? 'touch' : 'normal'; // [修复]应用接触AC（vsTouchAc）：自动结算也用接触AC判定
+        const result = await _roll.call(this, acType, null);
       // 自动模式沿用目标当前的基础隐蔽值（对话框模式下由目标自行勾选）
       const baseConceal = getProperty(this.system, 'attributes.concealment.total') || 0;
       if (baseConceal > 0) {
@@ -5868,7 +5869,7 @@ export class ActorPF extends Actor {
     if (!this.canAskForRequest) return;
     if (this.socket) return; //已连接则不再重复连接
     try {
-      this.socket = io(`${this.API_URI}`);
+      this.socket = io(`${this.API_URI}`, { reconnection: false });
       this.socket.on('foundry', (data) => {
         game.D35E.logger.log('Received foundry message', data);
         this.socket.emit('processed', {
@@ -5876,6 +5877,11 @@ export class ActorPF extends Actor {
           room: getProperty(this.system, 'companionUuid'),
         });
         this.executeRemoteAction(data);
+      });
+      this.socket.on('connect_error', () => {
+        // [D35E]伴侣服务不可达：清理连接，避免 socket.io 无限重连刷控制台（prepareData 会再次尝试）
+        this.socket = null;
+        this.socketRoomConnected = false;
       });
       this.socket.on('disconnect', () => {
         this.socket = null;
@@ -5934,6 +5940,14 @@ export class ActorPF extends Actor {
       success: function(data) {
         //LogHelper.log('LOTDCOMPANION | ', data)
         if (data && data.action) that.executeRemoteAction(data);
+      },
+      error: function(xhr, status, err) {
+        // [D35E]伴侣服务不可达：停止轮询，避免控制台持续报错（prepareData 会再次连接）
+        if (that.companionPollTimer) {
+          clearInterval(that.companionPollTimer);
+          that.companionPollTimer = null;
+        }
+        that.socketRoomConnected = false;
       },
     });
   }
@@ -6421,8 +6435,8 @@ export class ActorPF extends Actor {
   }
 
   static getActorFromTokenPlaceable(source) {
-    if (source.document.data.actorLink) {
-      return game.actors.get(source.document.data.actorId);
+    if (source.document.actorLink) {
+      return game.actors.get(source.document.actorId);
     } else {
       return source.actor;
     }

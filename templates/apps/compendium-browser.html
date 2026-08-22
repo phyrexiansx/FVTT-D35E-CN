@@ -30,7 +30,7 @@
           {{#each filter.items as |i|}}
           <div class="flexrow" style="padding: 0 4px">
             <label class="checkbox" style="position: relative; flex: 0 20px">
-              <input type="checkbox" class="stylized" name="{{i.key}}"/>
+              <input type="checkbox" class="stylized" name="{{i.key}}" {{#if i.checked}}checked{{/if}}/>
               <span class="checkmark"></span>
             </label>
             <label style="line-height: 22px; margin-left: 4px">{{i.name}}</label>
@@ -46,32 +46,6 @@
   </header>
 
   <div class="directory-container">
-    <ol class="directory-list">
-      {{#each collection as |c|}}
-      <li class="directory-item flexrow" data-collection="{{c.collection}}" data-entry-id="{{c.item.uuid}}">
-        <img class="profile" src="{{c.item.img}}" title="{{c.item.name}}"/>
-        <div class="flexcol">
-          <h4 class="entry-name"><a>{{c.item.name}}</a>
-            {{#if c.item.isSpell}}
-            <span style="margin-left: 4px; opacity: 0.7;">
-              {{localize "D35E.Level"}}: {{c.item.system.level}}
-            </span>
-            {{/if}}
-            
-            <span style="opacity: 0.8; float: right; margin-right: 12px;">{{c.packname}}{{#if c.issystem}}<i class="fas fa-shield-alt" style="color: darkgreen; margin-left: 4px;"></i>{{/if}}</span></h4>
-          {{#if c.item.isSpell}}
-          <span style="margin-left: 4px;">
-            {{c.item.system.snip}}
-          </span>
-          {{else}}
-          <span style="margin-left: 4px;">
-            
-          </span>
-          {{/if}}
-        </div>
-      </li>
-      {{/each}}
-    </ol>
-  </div>
-</div>
+  {{> "systems/D35E/templates/apps/compendium-browser-list.html"}}
+</div>/div>
 </div>

@@ -1,4 +1,7 @@
 @import url("module/monks-tokenbar/css/tokenbar.css");
+/* [D35E]Polyglot 内置样式（@import 必须置于样式表最前，否则被浏览器忽略） */
+@import url("./module/polyglot/styles/polyglot.css");
+@import url("./module/polyglot/lib/select2/select2.min.css");
 /*@import url(D35EcnFonts.css);*/
 /* -----------------修改css------------------------ */
 /*导入中文字体*/
@@ -924,7 +927,7 @@
   flex: 0 0 20px;
   margin: 0.25rem;
   font-family: "OSregular","Nodesto", "Signika", "Palatino Linotype", serif;
-  font-size: 18px;
+  font-size: 14px;
   border: none;
   display: inline-flex;
   width: max-content !important;
@@ -7197,9 +7200,14 @@ input#quantity:focus {
  * 压缩 textarea 为托盘让位，并禁止 form 内容外溢。
  * 2026-08-15 用户反馈输入框偏小：form 100px → 150px（+50%），textarea 相应加高；
  * 同时把 #chat-log 预留高度从 core 的 130px 同步为 180px，防止溢出 */
-#chat-form{height:150px;flex:0 0 150px;overflow:hidden;}
-#chat-form textarea{height:calc(100% - 32px);} /* 150-32=118px */
-#chat-log{height:calc(100% - 180px);}
+#chat-form{height:176px;flex:0 0 176px;overflow:hidden;}
+#chat-form textarea{height:calc(100% - 58px);} /* 176-58=118px（骰子栏≈30px+语言选择器≈28px） */
+#chat-log{height:calc(100% - 206px);}
+
+/* [D35E] 聊天栏语言选择器（骰子列表下方、输入框上方）：强制单行紧凑，避免中文标签被 flex 挤压竖排撑高 */
+#chat-form #polyglot.polyglot-lang-select{flex-wrap:nowrap;height:28px;min-height:0;}
+#chat-form #polyglot.polyglot-lang-select label{flex:0 0 auto !important;width:auto !important;white-space:nowrap;height:28px;line-height:28px;margin:0;}
+#chat-form #polyglot.polyglot-lang-select .select2-container{flex:1 1 auto;min-width:0;}
 
 /* 骰子托盘（聊天输入框上方一排小按钮） */
 .d35e-dice-tray{flex:0 0 auto;display:flex;flex-wrap:nowrap;overflow-x:auto;padding:2px 4px;background:rgba(0,0,0,0.2);border-top:1px solid rgba(201,199,184,0.25);border-bottom:1px solid rgba(201,199,184,0.15);}
@@ -7472,7 +7480,7 @@ input#quantity:focus {
 }
 
 /* ==================== 设置面板分类标题（基础/功能/视觉/音效/杂项） ==================== */
-#client-settings .tab[data-tab="system"] h3.d35e-settings-category {
+#client-settings section.tab.category h3.d35e-settings-category {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
@@ -7733,3 +7741,79 @@ input#quantity:focus {
 .D35E.sheet.actor .inventory-list .item.expanded .item-name-ne {
   flex: 1 1 auto;
 }
+
+/* [§79]角色卡音效浏览按钮：核心会对表单内 .file-picker 二次绑定（点击弹双窗），模板已去掉该类，这里按 data 属性选择器保持原尺寸外观 */
+form .form-group .form-fields button[data-d35e-hitfile],
+form .form-group .form-fields button[data-d35e-nlfile],
+form .form-group .form-fields button[data-d35e-natfile] {
+  flex: 0 0 24px;
+  line-height: 24px;
+  margin: -1px 0 -1px 4px;
+  order: 99;
+}
+
+
+/* ==================== 设置面板分类导航条（§81） ==================== */
+#client-settings section.tab.category .d35e-settings-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: rgba(20, 20, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+#client-settings section.tab.category .d35e-settings-nav a.d35e-settings-nav-link {
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ccc;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+#client-settings section.tab.category .d35e-settings-nav a.d35e-settings-nav-link:hover {
+  color: #fff;
+  background: rgba(120, 160, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+#client-settings section.tab.category .d35e-settings-nav .d35e-settings-nav-tip {
+  margin-left: auto;
+  font-size: 11px;
+  color: #999;
+  white-space: nowrap;
+}
+/* 滚动定位时让 sticky 导航条不遮住分类标题 */
+#client-settings section.tab.category h3.d35e-settings-category {
+  scroll-margin-top: 44px;
+}
+
+/* ===== [§84]滚动条窄化（列表过长出现滑块时更纤细，避免占满宽度） ===== */
+.window-app .window-content ::-webkit-scrollbar,
+.d35e ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.window-app .window-content ::-webkit-scrollbar-thumb,
+.d35e ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.window-app .window-content ::-webkit-scrollbar-thumb:hover,
+.d35e ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+.window-app .window-content ::-webkit-scrollbar-track,
+.d35e ::-webkit-scrollbar-track {
+  background: transparent;
+}
+

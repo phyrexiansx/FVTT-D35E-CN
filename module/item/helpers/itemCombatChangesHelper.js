@@ -7,7 +7,11 @@ export class ItemCombatChangesHelper {
 
   static isCombatChangeItemType(item) {
     let combatChangeItemType =
-      (item.type === "feat" || item.type === "aura" || item.type === "buff" || item.type === "equipment") &&
+      (item.type === "feat" ||
+        item.type === "aura" ||
+        item.type === "buff" ||
+        item.type === "equipment" ||
+        item.type === "spell") &&
       ItemActiveHelper.isActive(item);
     return combatChangeItemType && (getProperty(item.system, "combatChanges") || []).length;
   }

@@ -868,6 +868,8 @@ export const registerSystemSettings = function() {
     default: true
   });
 
+
+
   game.settings.register("D35E", "foldSpellDescriptions", {
     name: "法术描述默认折叠（聊天页）",
     hint: "开启后，聊天页中的法术描述卡默认折叠，仅显示名称、图片与简述；关闭则默认展开完整描述。",

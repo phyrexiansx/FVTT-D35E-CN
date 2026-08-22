@@ -26,7 +26,7 @@ import { ItemDrawerHelper } from "./helpers/itemDrawerHelper.js";
 import {CompendiumBrowser} from '../../apps/compendium-browser.js';
 import {ItemEquipHook} from '../../item/hooks/itemEquipHook.js';
 import {actorHasIntuition, actorHasNoAoO} from "../../automation/autoApply.js";
-import { setupItemDragPreview } from "./item-drag-preview.js";
+import { setupItemDragPreview, isDragSourceInFolder } from "./item-drag-preview.js";
 
 /**
  * [D35E]专长/职业特性文件夹分组辅助（按来源分类、手动分组、展开状态）
@@ -85,7 +85,7 @@ function _buildFeatureFolders(items, getFolder, customFolders, baseFolder, actor
   const states = _readFolderStates(actorId, sectionId);
   const folders = Array.from(map.entries()).map(([name, list]) => ({
     name,
-    items: list,
+    items: [...list].sort((a, b) => a.sort - b.sort),
     collapsed: states[name] === true,
   }));
   // 基础文件夹置顶，其余按名称排序
@@ -95,6 +95,22 @@ function _buildFeatureFolders(items, getFolder, customFolders, baseFolder, actor
     return String(a.name).localeCompare(String(b.name), "zh");
   });
   return folders;
+}
+
+/**
+ * [§83]从文件夹/列表元素向上找到实际滚动的容器（scroll-feats 或其可滚动祖先）
+ * 说明：特性列表可能在 .scroll-feats 内滚动，也可能滚动发生在窗口内容层，逐级探测 scrollHeight > clientHeight
+ */
+function _findFeatScroller(el) {
+  let node = el?.closest ? el.closest(".tab") : null;
+  if (!node) return null;
+  const list = node.querySelector(".scroll-feats") || node;
+  let cur = list;
+  while (cur) {
+    if (cur.scrollHeight > cur.clientHeight + 1) return cur;
+    cur = cur.parentElement;
+  }
+  return null;
 }
 
 /**
@@ -188,7 +204,7 @@ export class ActorSheetPF extends ActorSheet {
       hideShortDescriptions: game.settings.get("D35E", "hideSpells"),
       spellFailure: this.entity.spellFailure,
       isGM: game.user.isGM,
-      race: this.entity.race != null ? duplicate(this.entity.race.data) : null,
+      race: this.entity.race != null ? this.entity.race.toObject() : null,
     };
     // 直觉能力（战斗页标签）
     sheetData.intuitiveEffective = actorHasIntuition(this.actor);
@@ -2214,7 +2230,7 @@ export class ActorSheetPF extends ActorSheet {
     if (previousItemId) await this.actor.deleteOwnedItem(previousItemId);
 
     const itemId = $(event.currentTarget).parents(".item").attr("data-item-id");
-    const item = duplicate(this.actor.getOwnedItem(itemId).data);
+    const item = duplicate(this.actor.items.get(itemId).toObject());
     delete item._id;
     item.system.specialPrepared = true;
     let x = await this.actor.createEmbeddedEntity("Item", item, { ignoreSpellbookAndLevel: true });
@@ -2270,7 +2286,7 @@ export class ActorSheetPF extends ActorSheet {
   async _onSpellAddMetamagic(event) {
     event.preventDefault();
     const itemId = $(event.currentTarget).parents(".item").attr("data-item-id");
-    const newSpell = duplicate(this.actor.getOwnedItem(itemId).data.toObject(false));
+    const newSpell = duplicate(this.actor.items.get(itemId).toObject(false));
     delete newSpell._id;
 
     let metamagicFeats = this.actor.items.filter((o) => o.type === "feat" && o.system?.metamagic.enabled);
@@ -3297,9 +3313,12 @@ export class ActorSheetPF extends ActorSheet {
       "feat"
     );
     // 职业特性：手动分组（featureFolder flag）优先，其次按来源职业名；无归属的平铺在文件夹外
-    // 注意：始终显示全部职业特性（不受 classFeaturesInTabs 设置影响），保证文件夹分组可见
+    // 注意：items 只保留无归属的（有归属的在文件夹内渲染，避免同一特性渲染两遍）
     const allClassFeats = this.actor.items.filter((i) => i.system?.featType === "classFeat");
-    features.classFeat.items = allClassFeats;
+    const unfiledClassFeats = allClassFeats
+      .filter((f) => !f.getFlag("D35E", "featureFolder") && !_classFeatureSourceName(f))
+      .sort((a, b) => a.sort - b.sort);
+    features.classFeat.items = unfiledClassFeats;
     features.classFeat.folders = _buildFeatureFolders(
       allClassFeats,
       (f) => f.getFlag("D35E", "featureFolder") || _classFeatureSourceName(f),
@@ -3308,9 +3327,7 @@ export class ActorSheetPF extends ActorSheet {
       this.actor.id,
       "classFeat"
     );
-    features.classFeat.unfiled = allClassFeats.filter(
-      (f) => !f.getFlag("D35E", "featureFolder") && !_classFeatureSourceName(f)
-    );
+    features.classFeat.unfiled = unfiledClassFeats;
     // 专长全部分类归组（item 列表留空，由文件夹渲染）；特性列表只保留无归属的（文件夹外平铺）
     features.feat.items = [];
     // 附上分组 key（模板里 data-section / data-tab 需要用到分组名而非数组下标）
@@ -3378,7 +3395,11 @@ export class ActorSheetPF extends ActorSheet {
       list.push(name);
       await this.actor.setFlag("D35E", flagKey, list);
     }
-    this.render(false);
+    // [§83]渲染后保持滚动位置
+    const scroller = _findFeatScroller(row);
+    const pos = scroller ? scroller.scrollTop : 0;
+    const tabKey = row.closest(".tab")?.dataset?.tab || "";
+    await this._renderPreserveScroll(tabKey, pos);
   }
 
   /**
@@ -3408,7 +3429,11 @@ export class ActorSheetPF extends ActorSheet {
         }
       }
       if (updates.length) await this.actor.updateEmbeddedDocuments("Item", updates);
-      this.render(false);
+      // [§83]渲染后保持滚动位置
+      const scroller = _findFeatScroller(li);
+      const pos = scroller ? scroller.scrollTop : 0;
+      const tabKey = li.closest(".tab")?.dataset?.tab || "";
+      await this._renderPreserveScroll(tabKey, pos);
     };
     const msg = `<p>${game.i18n.format("D35E.DeleteFeatureFolderConfirm", { folder: folderName })}</p>`;
     Dialog.confirm({
@@ -3422,8 +3447,6 @@ export class ActorSheetPF extends ActorSheet {
    * [D35E]把专长/特性拖入文件夹：专长设置来源为该文件夹名；特性设置手动分组 flag（手动优先于职业来源）
    */
   async _onFeatureFolderDrop(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
     const folderEl = ev.currentTarget;
     const folderName = folderEl.dataset?.folder;
     const section = folderEl.dataset?.section || "feat";
@@ -3437,9 +3460,36 @@ export class ActorSheetPF extends ActorSheet {
       return;
     }
     if (data?.type !== "Item" || !data?.uuid) return;
+    // [§83]文件夹内部物品行：源物品也在文件夹内时放行给核心排序（_onSortItem），支持文件夹内拖动排序
+    const rowEl = ev.target.closest ? ev.target.closest("li.item") : null;
+    if (rowEl && isDragSourceInFolder() && String(data.uuid).startsWith(`Actor.${this.actor.id}.Item.`)) {
+      return; // 不拦截：drop 冒泡到表单，由核心 DragDrop 走 _onSortItem 排序
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    // [修复]非本角色物品（边栏世界物品/其他角色/compendium）拖入文件夹 → 添加为角色物品并归组到该文件夹
+    if (!String(data.uuid).startsWith(`Actor.${this.actor.id}.Item.`)) {
+      const sourceItem = await fromUuid(data.uuid);
+      if (!sourceItem) return;
+      const itemData = sourceItem.toObject(false);
+      if (itemData._id) delete itemData._id;
+      if (!itemData.flags) itemData.flags = {};
+      if (!itemData.flags.D35E) itemData.flags.D35E = {};
+      itemData.flags.D35E.featureFolder = folderName;
+      const scroller = _findFeatScroller(folderEl);
+      const pos = scroller ? scroller.scrollTop : 0;
+      const tabKey = folderEl.closest(".tab")?.dataset?.tab || "";
+      await this.importItem(itemData, "data");
+      await this._renderPreserveScroll(tabKey, pos);
+      return;
+    }
     // v11 使用全局 fromUuid 解析拖放物品
     const item = await fromUuid(data.uuid);
     if (!item) return;
+    // [§83]记录滚动位置，归组渲染后恢复（列表不跳回顶部）
+    const scroller = _findFeatScroller(folderEl);
+    const pos = scroller ? scroller.scrollTop : 0;
+    const tabKey = folderEl.closest(".tab")?.dataset?.tab || "";
     if (section === "feat") {
       // 专长分类即来源字段
       await item.update({ "system.source": folderName });
@@ -3447,7 +3497,53 @@ export class ActorSheetPF extends ActorSheet {
       // 特性手动分组（不与职业本身绑定）
       await item.update({ "flags.D35E.featureFolder": folderName });
     }
-    this.render(false);
+    await this._renderPreserveScroll(tabKey, pos);
+  }
+
+  /**
+   * [§83]重新渲染并恢复特性列表滚动位置（拖动/增删文件夹后列表不跳回顶部）
+   * @param {string} tabKey 特性 tab 的 data-tab 值
+   * @param {number} pos 渲染前记录的 scrollTop
+   */
+  async _renderPreserveScroll(tabKey, pos) {
+    await this.render(false);
+    if (!pos) return;
+    const tabEl = this.element?.[0]?.querySelector(`.tab[data-tab="${tabKey}"]`);
+    if (!tabEl) return;
+    const scroller = _findFeatScroller(tabEl);
+    if (scroller) scroller.scrollTop = pos;
+  }
+  /**
+   * [§84]同角色物品拖放排序（替代核心 _onSortItem：核心依赖已废弃的 .data/_id 兼容层且此处 event 缺失，会导致排序失效与大量警告）
+   * 逻辑与核心一致：按目标行相邻兄弟重排 sort 整数；排序后立即重渲染让新顺序生效，并恢复滚动位置
+   * @param {Event} event drop 事件
+   * @param {Item35E} sourceItem 被拖的同角色物品
+   */
+  async _sortItemOnDrop(event, sourceItem) {
+    const items = this.actor.items;
+    const source = sourceItem;
+    const dropTarget = event.target.closest("[data-item-id]");
+    if (!dropTarget) return;
+    const target = items.get(dropTarget.dataset.itemId);
+    if (!target || source.id === target.id) return;
+    // 相邻兄弟行（同一列表容器内，含文件夹内部行）
+    const siblings = [];
+    for (let el of dropTarget.parentElement.children) {
+      const sid = el.dataset?.itemId;
+      if (sid && sid !== source.id) {
+        const sib = items.get(sid);
+        if (sib) siblings.push(sib);
+      }
+    }
+    // sortKey 用 sort（v11 Document.sort 有效字段）：此前误用 "id" 会把物品 id 覆盖成数字导致拖拽损坏/失效
+    const sortUpdates = SortingHelpers.performIntegerSort(source, { target, siblings, sortKey: "sort" });
+    const updateData = sortUpdates.map((u) => ({ _id: u.target.id, ...u.update }));
+    // 排序后立即重渲染让新顺序生效，并恢复滚动位置（列表不跳回顶部）
+    const scroller = _findFeatScroller(event.target);
+    const pos = scroller ? scroller.scrollTop : 0;
+    const tabKey = event.target.closest?.(".tab")?.dataset?.tab || "";
+    await this.actor.updateEmbeddedDocuments("Item", updateData);
+    await this._renderPreserveScroll(tabKey, pos);
   }
 
   _isAttackUseable(a, equippedWeapons) {
@@ -3670,17 +3766,17 @@ export class ActorSheetPF extends ActorSheet {
         return;
       }
       // External item — add it, then equip directly into the dropped position
-      const created = await this.addItemFromDropData(dropData);
+      const created = await this.addItemFromDropData(dropData, event);
       const createdItem = Array.isArray(created) ? created[0] : created;
       if (createdItem) await equipToPosition(createdItem);
       return;
     }
 
     //if ()
-    return await this.addItemFromDropData(dropData);
+    return await this.addItemFromDropData(dropData, event);
   }
 
-  async addItemFromDropData(dropData) {
+  async addItemFromDropData(dropData, event) {
     let dataType = "";
     const actor = this.actor;
 
@@ -3701,8 +3797,8 @@ export class ActorSheetPF extends ActorSheet {
       }
     }
 
-    // Case 2 - Data explicitly provided
-    else if (dropData.data) {
+    // Case 2 - Data explicitly provided（dropData 可能是 Item35E 实例或拖放对象；先经 toObject 短路，避免访问废弃的 .data）
+    else if (dropData?.toObject || dropData?.data) {
       // dropData 可能是 Item35E 实例（Case1 已被 fromUuidSync 替换），也可能是带 data 字段的拖放对象；
       // 不能用 dropData.data.parent —— v10 兼容 getter 上不存在 parent/id
       // Document 实例一定有 uuid/toObject；用鸭子检测替代 instanceof（兼容 v10/v11 全局 Document 差异）
@@ -3712,7 +3808,7 @@ export class ActorSheetPF extends ActorSheet {
       const sourceActor = sourceItem?.parent ?? null;
       let sameActor = sourceActor?.uuid === actor.uuid;
       //if (sameActor && actor.isToken) sameActor = dropData.tokenId === actor.token.id;
-      if (sameActor) return this._onSortItem(event, sourceItem); // Sort existing items
+      if (sameActor) return this._sortItemOnDrop(event, sourceItem); // Sort existing items（自实现，见下）
       if (sourceActor?.sheet?.id) {
         if (sourceActor.sheet.id.indexOf("ActorSheetPFNPCLoot") !== -1) {
           if (sourceActor.getFlag("D35E", "lootsheettype") === "loot")
@@ -3738,7 +3834,7 @@ export class ActorSheetPF extends ActorSheet {
     // Case 3 - Import from World entity
     else {
       dataType = "world";
-      itemData = game.items.get(dropData.id).data.toObject(false);
+      itemData = game.items.get(dropData.id).toObject(false);
     }
     if (getProperty(itemData, "data.uniqueId") || itemData.system?.uniqueId) {
       return new Dialog(
@@ -3858,11 +3954,10 @@ export class ActorSheetPF extends ActorSheet {
 
   enrichDropData(origData) {
     if (getProperty(origData, "type") === "spell") {
-      if (origData?.document)
-        origData?.document.data.update({
-          "system.spellbook": this.currentPrimaryTab === "spellbook" ? this.currentSpellbookKey : null,
-        });
-      else origData.data.spellbook = this.currentPrimaryTab === "spellbook" ? this.currentSpellbookKey : null;
+      // v11：Document 实例直接改内存（updateSource 不落库），纯对象则 setProperty（避免访问废弃的 .data）
+      const spellbook = this.currentPrimaryTab === "spellbook" ? this.currentSpellbookKey : null;
+      if (origData?.updateSource) origData.updateSource({ "system.spellbook": spellbook });
+      else if (getProperty(origData, "system")) setProperty(origData, "system.spellbook", spellbook);
     }
   }
 

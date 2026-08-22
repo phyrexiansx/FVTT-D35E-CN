@@ -413,19 +413,21 @@ export class Item35E extends ItemBase35E {
       labels.equipmentSubtype = C.equipmentTypes[eType][eSubtype];
 
       // AC labels
-      labels.armor = data.armor.value ? `${data.armor.value} AC` : "";
-      if (data.armor.dex === "") data.armor.dex = null;
-      else if (typeof data.armor.dex === "string" && /\d+/.test(data.armor.dex)) {
-        data.armor.dex = parseInt(data.armor.dex);
+      if (data.armor && typeof data.armor === "object") {
+        labels.armor = data.armor.value ? `${data.armor.value} AC` : "";
+        if (data.armor.dex === "") data.armor.dex = null;
+        else if (typeof data.armor.dex === "string" && /\d+/.test(data.armor.dex)) {
+          data.armor.dex = parseInt(data.armor.dex);
+        }
+        // Add enhancement bonus
+        if (data.armor.enh == null) data.armor.enh = 0;
       }
-      // Add enhancement bonus
-      if (data.armor.enh == null) data.armor.enh = 0;
     }
 
     // Activated Items
     if (data.hasOwnProperty("activation")) {
       // Ability Activation Label
-      let act = data.activation || {};
+      let act = data.activation && typeof data.activation === "object" ? data.activation : {};
       if (act)
         labels.activation = [
           ["minute", "hour"].includes(act.type) ? act.cost.toString() : "",
@@ -433,7 +435,7 @@ export class Item35E extends ItemBase35E {
         ].filterJoin(" ");
 
       // Target Label
-      let tgt = data.target || {};
+      let tgt = data.target && typeof data.target === "object" ? data.target : {};
       if (["none", "touch", "personal"].includes(tgt.units)) tgt.value = null;
       if (["none", "personal"].includes(tgt.type)) {
         tgt.value = null;
@@ -443,7 +445,7 @@ export class Item35E extends ItemBase35E {
       if (labels.target) labels.target = `Target: ${labels.target}`;
 
       // Range Label
-      let rng = data.range || {};
+      let rng = data.range && typeof data.range === "object" ? data.range : {};
       if (!["ft", "mi", "spec"].includes(rng.units)) {
         rng.value = null;
         rng.long = null;
@@ -452,7 +454,7 @@ export class Item35E extends ItemBase35E {
       if (labels.range.length > 0) labels.range = ["Range:", labels.range].join(" ");
 
       // Duration Label
-      let dur = data.duration || {};
+      let dur = data.duration && typeof data.duration === "object" ? data.duration : {};
       if (["inst", "perm", "spec"].includes(dur.units)) dur.value = null;
       labels.duration = [dur.value, C.timePeriods[dur.units]].filterJoin(" ");
     }
@@ -460,7 +462,7 @@ export class Item35E extends ItemBase35E {
     // Item Actions
     if (data.hasOwnProperty("actionType")) {
       // Save DC
-      let save = data.save || {};
+      let save = data.save && typeof data.save === "object" ? data.save : {};
       if (save.description || save.type) {
         labels.save = `DC ${save.dc}`;
       }

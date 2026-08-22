@@ -25,3 +25,5 @@ backup_*/
 备份/
 packs/*/lost/
 *.before-*
+companion-server/status.json
+companion-server/data/

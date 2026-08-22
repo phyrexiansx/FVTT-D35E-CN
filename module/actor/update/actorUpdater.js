@@ -1145,8 +1145,8 @@ export class ActorUpdater {
     let shapechangeImg = updateData["system.shapechangeImg"];
     let tokenImg = updateData["system.tokenImg"];
 
-    if (updated !== null && updated.token !== undefined && updated.token.img !== undefined) {
-      tokenImg = updated.token.img;
+    if (updated !== null && getProperty(updated, "system.token.texture.src") !== undefined) {
+      tokenImg = getProperty(updated, "system.token.texture.src");
       linkData(source, updateData, "system.tokenImg", tokenImg);
     }
     if (!options.skipToken && !getProperty(this.actor.system, "noTokenOverride")) {
@@ -1166,7 +1166,7 @@ export class ActorUpdater {
             if (shapechangeImg !== o.img)
               ActorPF._updateToken(o, { texture: { src: shapechangeImg } }, { stopUpdates: true });
           }
-          if (source !== null) source["token.img"] = shapechangeImg;
+          if (source !== null) source["system.token.texture.src"] = shapechangeImg;
         }
       } else {
         if (this.actor.isToken) {
@@ -1186,7 +1186,7 @@ export class ActorUpdater {
           }
 
           if (source !== null) {
-            source["token.img"] = tokenImg;
+            source["system.token.texture.src"] = tokenImg;
           }
         }
       }

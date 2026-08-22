@@ -60,9 +60,9 @@ export const registerSettings = function () {
 	const dividexp = (game.system.id === "pf2e" ? "no-split" : "equal-split");
 
 	game.settings.registerMenu(modulename, 'resetPosition', {
-		name: 'Reset Position',
+		name: '还原面板',
 		label: 'Reset Position',
-		hint: 'Reset the position of the tokenbar if it disappears off the screen.',
+		hint: '重置面板的位置，用于恢复误将面板拖到无法触及的位置',
 		icon: 'fas fa-desktop',
 		restricted: true,
 		type: ResetPosition,
@@ -72,9 +72,9 @@ export const registerSettings = function () {
 	});
 
 	game.settings.registerMenu(modulename, 'editStats', {
-		name: 'Edit Stats',
+		name: '编辑状态',
 		label: 'Edit Stats',
-		hint: 'Edit the stats that are displayed on the Tokenbar',
+		hint: '编辑面板上显示的数值',
 		icon: 'fas fa-align-justify',
 		restricted: true,
 		type: EditStats

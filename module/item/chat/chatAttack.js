@@ -485,7 +485,7 @@ export class ChatAttack {
     this.spellPenetration = spellPenetration;
     for (let action of this.item.system.specialActions) {
       if (cl === null) {
-        if (this.item.data.type === "spell") {
+        if (this.item.type === "spell") {
           const spellbookIndex = this.item.system.spellbook;
           const spellbook = _actor.system.attributes.spells.spellbooks[spellbookIndex];
           cl = spellbook.cl.total + (this.item.system.clOffset || 0);
@@ -535,7 +535,7 @@ export class ChatAttack {
       ? actor
       : this.item.actor;
 
-    if (cl === null && this.item.data.type === "spell") {
+    if (cl === null && this.item.type === "spell") {
       const spellbookIndex = this.item.system.spellbook;
       const spellbook = _actor.system.attributes.spells.spellbooks[spellbookIndex];
       cl = spellbook.cl.total + (this.item.system.clOffset || 0);

@@ -28,13 +28,23 @@ export class D35eRolls extends BaseRolls {
             { id: "misc", text: '', groups: { init: i18n("MonksTokenBar.Initiative") } },
             { id: "ability", text: i18n("MonksTokenBar.Ability"), groups: this.config.abilities },
             { id: "save", text: i18n("MonksTokenBar.SavingThrow"), groups: this.config.savingThrows },
-            { id: "skill", text: i18n("MonksTokenBar.Skill"), groups: this.config.skills }
+            { id: "skill", text: i18n("MonksTokenBar.Skill"), groups: this.config.skills },
+            { id: "custom", text: i18n("MonksTokenBar.Custom") || "自定义", groups: { cmb: "擒抱对抗 (CMB)", feintDef: "虚招防御 (BAB+察言观色)" } }
         ].concat(this._requestoptions);
         /*
         this._defaultSetting = mergeObject(this._defaultSetting, {
             stat1: "attributes.ac.normal.total",
             stat2: "skills.spt.value"
         });*/
+    }
+
+    getValue(actor, type, key) {
+        // [D35E]自定义对抗：CMB 擒抱 / 虚招防御（BAB+察言观色）
+        if (type === "custom") {
+            if (key === "cmb") return getProperty(actor.system, "attributes.cmb.total") ?? 0;
+            if (key === "feintDef") return (getProperty(actor.system, "attributes.bab.total") ?? 0) + (getProperty(actor.system, "skills.sen.mod") ?? 0);
+        }
+        return super.getValue(actor, type, key);
     }
 
     get canGrab() {
@@ -83,7 +93,7 @@ export class D35eRolls extends BaseRolls {
         return 'ability:str';
     }
 
-    roll({ id, actor, request, rollMode, fastForward = false }, callback, e) {
+    async roll({ id, actor, request, rollMode, fastForward = false }, callback, e) {
         // [D35E]优势/劣势：从 adv-btn 点击目标读取（dnd5e parseKeys 逻辑）
         if (e) {
             e.advantage = e.advantage ?? $(e?.originalEvent?.target).hasClass("advantage");
@@ -93,6 +103,16 @@ export class D35eRolls extends BaseRolls {
         const tagMode = getRollAdvantageMode(actor);
         const advMode = e?.advantage ? "kh" : (e?.disadvantage ? "kl" : (tagMode === 1 ? "kh" : (tagMode === -1 ? "kl" : "")));
         const d20 = advMode ? "2d20" + advMode : "1d20"; // 优势2d20kh / 劣势2d20kl
+        // [D35E]自定义对抗（CMB 擒抱 / 虚招防御 BAB+察言观色）：固定公式，无需弹窗，自动/手动模式均直投
+        if (request.type === "custom") {
+            let formula = null;
+            if (request.key === "cmb") formula = `${d20} + ${getProperty(actor.system, "attributes.cmb.total") || 0}`;
+            else if (request.key === "feintDef") formula = `${d20} + ${getProperty(actor.system, "attributes.bab.total") || 0} + ${getProperty(actor.system, "skills.sen.mod") || 0}`;
+            if (!formula) return { id: id, error: true, msg: i18n("MonksTokenBar.ActorNoRollFunction") };
+            const rc = await new Roll35e(formula).roll();
+            if (!(rc instanceof Roll)) return { id: id, error: true, msg: i18n("MonksTokenBar.UnknownError") };
+            return callback(rc);
+        }
         // [D35E]自动结算条件：autoApplyIntuitive 开 && 目标无“阻止自动结算” && 无可选高级行动 → 直接自动投
         const auto = request?.type === 'save'
             ? targetAutoSettleSave(actor)
@@ -128,20 +148,20 @@ export class D35eRolls extends BaseRolls {
                     checkMod: abl?.checkMod || 0,
                     drain: getProperty(actor.system, 'attributes.energyDrain') || 0,
                 };
-                const r1 = new Roll35e(d20 + ' + @mod + @checkMod - @drain', data).roll();
+                const r1 = await new Roll35e(d20 + ' + @mod + @checkMod - @drain', data).roll();
                 if (!(r1 instanceof Roll)) return { id: id, error: true, msg: i18n("MonksTokenBar.UnknownError") };
                 return callback(r1);
             }
             else if (request.type == 'save') {
                 const total = getProperty(actor.system, 'attributes.savingThrows.' + request.key + '.total') || 0;
-                const r2 = new Roll35e(d20 + ' + ' + total).roll();
+                const r2 = await new Roll35e(d20 + ' + ' + total).roll();
                 if (!(r2 instanceof Roll)) return { id: id, error: true, msg: i18n("MonksTokenBar.UnknownError") };
                 return callback(r2);
             }
             else if (request.type == 'skill') {
                 const skill = getProperty(actor.system, 'skills.' + request.key);
                 const mod = skill?.mod || 0;
-                const r3 = new Roll35e(d20 + ' + ' + mod).roll();
+                const r3 = await new Roll35e(d20 + ' + ' + mod).roll();
                 if (!(r3 instanceof Roll)) return { id: id, error: true, msg: i18n("MonksTokenBar.UnknownError") };
                 return callback(r3);
             }

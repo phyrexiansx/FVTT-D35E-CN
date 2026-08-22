@@ -544,6 +544,10 @@ Hooks.on("renderActorSheet", (app, html) => {
     ev.preventDefault();
     openPicker("hitSoundFile", "hitSoundFile");
   });
+  html.find('[data-d35e-nlfile]').on("click", (ev) => {
+    ev.preventDefault();
+    openPicker("nonLethalSoundFile", "nonLethalSoundFile");
+  });
   html.find('[data-d35e-natfile]').on("click", (ev) => {
     ev.preventDefault();
     const nat = ev.currentTarget.dataset.nat; // "n20" | "n1"
@@ -551,3 +555,4 @@ Hooks.on("renderActorSheet", (app, html) => {
     else if (nat === "n1") openPicker("n1SoundFile", "n1SoundFile");
   });
 });
+

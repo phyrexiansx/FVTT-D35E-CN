@@ -122,6 +122,11 @@ export class WalkImageSettings extends FormApplication {
       walkImageScale: this.actor.getFlag("D35E", "walkImageScale") ?? 1,
       walkImageOffsetX: this.actor.getFlag("D35E", "walkImageOffsetX") ?? 0,
       walkImageOffsetY: this.actor.getFlag("D35E", "walkImageOffsetY") ?? 0,
+      walkRows: this.actor.getFlag("D35E", "walkRows") ?? 4,
+      walkCols: this.actor.getFlag("D35E", "walkCols") ?? 3,
+      walkIdleFrame: this.actor.getFlag("D35E", "walkIdleFrame") ?? 2,
+      walkLoop: this.actor.getFlag("D35E", "walkLoop") || "pingpong",
+      walkInterval: this.actor.getFlag("D35E", "walkInterval") ?? "",
     };
   }
 
@@ -140,6 +145,11 @@ export class WalkImageSettings extends FormApplication {
     await this.actor.setFlag("D35E", "walkImageScale", Number(formData.walkImageScale) || 1);
     await this.actor.setFlag("D35E", "walkImageOffsetX", Number(formData.walkImageOffsetX) || 0);
     await this.actor.setFlag("D35E", "walkImageOffsetY", Number(formData.walkImageOffsetY) || 0);
+    await this.actor.setFlag("D35E", "walkRows", Math.max(1, Math.floor(Number(formData.walkRows) || 4)));
+    await this.actor.setFlag("D35E", "walkCols", Math.max(1, Math.floor(Number(formData.walkCols) || 3)));
+    await this.actor.setFlag("D35E", "walkIdleFrame", Math.max(1, Math.floor(Number(formData.walkIdleFrame) || 2)));
+    await this.actor.setFlag("D35E", "walkLoop", formData.walkLoop === "forward" ? "forward" : "pingpong");
+    await this.actor.setFlag("D35E", "walkInterval", Math.max(0, Math.floor(Number(formData.walkInterval) || 0)));
   }
 }
 
@@ -247,6 +257,58 @@ function _getWalkOffset(token) {
   return { x: 0, y: 0 };
 }
 
+// ---------------- 拆分规则（行数 / 每行帧数 / 停留帧 / 循环 / 速度） ----------------
+// 数字配置：合成 token 优先自身 flag，其次父角色；无效值回退默认
+function _cfgNum(token, key, def) {
+  const v = _getActorFlag(token, key);
+  const n = Number(v);
+  return v == null || isNaN(n) ? def : n;
+}
+
+// 拆分规格：rows 行 × cols 列；停留帧（1-based 用户值 → 0-based）
+function _splitCfg(token) {
+  const cols = Math.max(1, Math.floor(_cfgNum(token, "walkCols", 3)));
+  return {
+    rows: Math.max(1, Math.floor(_cfgNum(token, "walkRows", 4))),
+    cols,
+    idle: Math.max(0, Math.min(Math.floor(_cfgNum(token, "walkIdleFrame", 2)) - 1, cols - 1)),
+  };
+}
+
+// 循环方式：乒乓（12321）/ 正向（123123）
+function _loopMode(token) {
+  return _getActorFlag(token, "walkLoop") === "forward" ? "forward" : "pingpong";
+}
+
+// 角色级播放间隔（0 = 使用系统默认）
+function _intervalOf(token) {
+  return Math.max(0, Math.floor(_cfgNum(token, "walkInterval", 0)));
+}
+
+// 帧序列推进：行走按循环设置；受击/异常图固定正向循环
+function _nextFrame(s, { forceForward = false } = {}) {
+  if (s.cols <= 1) { s.frame = 0; return; }
+  if (forceForward || s.loop === "forward") s.frame = (s.frame + 1) % s.cols;
+  else {
+    s.frame += s.phase;
+    if (s.frame >= s.cols - 1) s.phase = -1;
+    if (s.frame <= 0) s.phase = 1;
+  }
+}
+
+// 播放间隔：角色设置优先，否则系统默认
+function _interval(s) {
+  return s.interval > 0 ? s.interval : game.settings.get("D35E", SETTING.interval);
+}
+
+// 重置播放：正向从第1帧，乒乓从停留帧；可选强制正向（受击/异常图）
+function _resetPlay(s, forceForward = false) {
+  s.frame = forceForward || s.loop === "forward" ? 0 : s.idle;
+  s.phase = 1;
+  s.lastTime = performance.now();
+  _setFrame(s);
+}
+
 async function _ensureForToken(token) {
   if (!token || !token.mesh || token.destroyed || anims.has(token.id)) return;
   const walkImg = _getWalkImage(token);
@@ -254,8 +316,9 @@ async function _ensureForToken(token) {
   try {
     const base = await _getBaseTexture(walkImg);
     if (!token.mesh || token.destroyed || anims.has(token.id)) return; // 加载期间 token 可能被删/已重建
-    const frameW = Math.max(1, base.width / 3);
-    const frameH = Math.max(1, base.height / 4);
+    const split = _splitCfg(token);
+    const frameW = Math.max(1, base.width / split.cols);
+    const frameH = Math.max(1, base.height / split.rows);
     // 直接替换 mesh 纹理 = 取代原 token 图（交互/层级/缩放/受击特效全部沿用 Foundry 原生机制）
     const origTex = token.mesh.texture;
     const origScale = { x: token.mesh.scale.x, y: token.mesh.scale.y };
@@ -271,6 +334,11 @@ async function _ensureForToken(token) {
     anims.set(token.id, {
       token,
       walkImg,
+      rows: split.rows,
+      cols: split.cols,
+      idle: split.idle,
+      loop: _loopMode(token),
+      interval: _intervalOf(token),
       walkConditionImg: null, // 当前异常行走图（切换时按需加载）
       frameW,
       frameH,
@@ -288,13 +356,13 @@ async function _ensureForToken(token) {
       origScale,
       ready: false, // 首帧仅记录位置（避免场景加载时的网格对齐微位移被误判为移动）
       row: 0, // 0下 1左 2右 3上
-      frame: 1, // 中间帧（col=1）
+      frame: split.idle, // 停留帧（0-based，默认第2帧）
       phase: 1,
       lastX: token.x,
       lastY: token.y,
       lastTime: 0,
     });
-    _setFrame(anims.get(token.id)); // 应用初始帧（下行中间帧）
+    _setFrame(anims.get(token.id)); // 应用初始帧（下行停留帧）
   } catch (e) {
     console.error("D35E walk image load failed:", walkImg, e);
   }
@@ -329,8 +397,8 @@ function _removeAnim(token) {
 function _setFrame(s) {
   if (!s.token?.mesh) return;
   if (s.hitMode && s.hitImg) {
-    // 受击图片：1×4 竖排（每行一个方向单帧），显示当前方向行
-    s.token.mesh.texture = _getFrame(s.hitImg, s.row, 0, s.frameW, s.frameH);
+    // 受击图片：按当前方向行 + 当前帧（正向循环）
+    s.token.mesh.texture = _getFrame(s.hitImg, s.row, s.frame, s.frameW, s.frameH);
     return;
   }
   const img = s.usingCondition && s.walkConditionImg ? s.walkConditionImg : s.walkImg;
@@ -345,6 +413,9 @@ function _triggerHitImage(token) {
   if (!hitImg) return;
   s.hitMode = true;
   s.hitImg = hitImg;
+  s.frame = 0;
+  s.phase = 1;
+  s.lastTime = performance.now();
   _loadHitImage(s, hitImg);
   clearTimeout(s._hitTimer);
   s._hitTimer = setTimeout(() => {
@@ -355,7 +426,7 @@ function _triggerHitImage(token) {
       st.hitImg = null;
       st.frameW = st.usingCondition ? st.condFrameW : st.normalFrameW;
       st.frameH = st.usingCondition ? st.condFrameH : st.normalFrameH;
-      _setFrame(st);
+      _resetPlay(st);
     }
   }, HIT_IMG_DURATION);
 }
@@ -365,9 +436,9 @@ async function _loadHitImage(s, img) {
     const base = await _getBaseTexture(img);
     const st = anims.get(s.token?.id);
     if (!st || !st.hitMode || st.hitImg !== img) return; // 期间已恢复/换图
-    // 1×4：4 个方向行（下/左/右/上），每行单帧
-    st.hitFrameW = Math.max(1, base.width);
-    st.hitFrameH = Math.max(1, base.height / 4);
+    // 按当前角色的拆分规则（行数/每行帧数）
+    st.hitFrameW = Math.max(1, base.width / st.cols);
+    st.hitFrameH = Math.max(1, base.height / st.rows);
     st.frameW = st.hitFrameW;
     st.frameH = st.hitFrameH;
     _setFrame(st);
@@ -383,8 +454,8 @@ async function _switchToConditionImg(s, img) {
     const base = await _getBaseTexture(img);
     const st = anims.get(s.token?.id);
     if (!st || !st.usingCondition) return; // 期间已清理 / 已切回正常图
-    st.condFrameW = Math.max(1, base.width / 3);
-    st.condFrameH = Math.max(1, base.height / 4);
+    st.condFrameW = Math.max(1, base.width / st.cols);
+    st.condFrameH = Math.max(1, base.height / st.rows);
     st.frameW = st.condFrameW;
     st.frameH = st.condFrameH;
     _setFrame(st);
@@ -403,7 +474,6 @@ async function _switchToConditionImg(s, img) {
 // ---------------- 每帧驱动：方向检测 + 帧乒乓 ----------------
 function _tick() {
   if (!anims.size) return;
-  const interval = game.settings.get("D35E", SETTING.interval);
   const now = performance.now();
   for (const [id, s] of anims) {
     const token = s.token;
@@ -431,8 +501,15 @@ function _tick() {
     // 防 token.refresh 等将纹理重置回原图（尺寸≠帧尺寸时重新应用当前帧）
     if (token.mesh.texture?.width !== s.frameW || token.mesh.texture?.height !== s.frameH) _setFrame(s);
 
-    // 受击图片显示期间：冻结帧/方向/异常切换（受击图保持铺满）
-    if (s.hitMode) continue;
+    // 受击图片显示期间：固定正向循环，冻结方向/异常切换
+    if (s.hitMode) {
+      if (now - s.lastTime >= _interval(s)) {
+        s.lastTime = now;
+        _nextFrame(s, { forceForward: true });
+        _setFrame(s);
+      }
+      continue;
+    }
 
     // 方向检测（绝对值大的轴优先）
     const dx = token.x - s.lastX;
@@ -452,32 +529,24 @@ function _tick() {
         s.walkConditionImg = null;
         s.frameW = s.normalFrameW;
         s.frameH = s.normalFrameH;
-        s.frame = 1;
-        s.phase = 1;
-        s.lastTime = now;
-        _setFrame(s);
+        _resetPlay(s);
       }
       let row = s.row;
       if (Math.abs(dx) > Math.abs(dy)) row = dx > 0 ? 2 : 1; // 右/左
       else if (dy !== 0) row = dy > 0 ? 0 : 3; // 下/上
       if (row !== s.row) {
-        // 转向：从中间帧重新起步
+        // 转向：从起步帧重新开始
         s.row = row;
-        s.frame = 1;
-        s.phase = 1;
-        s.lastTime = now;
-        _setFrame(s);
+        _resetPlay(s);
       }
-      // 帧乒乓 1→2→1→0→1→2…
-      if (now - s.lastTime >= interval) {
+      // 帧推进：乒乓（12321）或正向（123123）
+      if (now - s.lastTime >= _interval(s)) {
         s.lastTime = now;
-        s.frame += s.phase;
-        if (s.frame >= 2) s.phase = -1;
-        if (s.frame <= 0) s.phase = 1;
+        _nextFrame(s);
         _setFrame(s);
       }
     } else {
-      // 停止：异常行走图切换（正常↔异常、异常A→异常B）或回退当前方向中间帧
+      // 停止：异常行走图切换（正常↔异常、异常A→异常B）或回退当前方向停留帧
       const condImg = _getConditionWalkImg(token);
       if (s.usingCondition) {
         // 已在异常模式
@@ -487,27 +556,31 @@ function _tick() {
           s.walkConditionImg = null;
           s.frameW = s.normalFrameW;
           s.frameH = s.normalFrameH;
-          s.frame = 1;
-          _setFrame(s);
+          _resetPlay(s);
         } else if (condImg !== s.walkConditionImg) {
           // 目标异常图变化（状态配置/优先级变化）→ 切换到新异常图
           s.walkConditionImg = condImg;
-          s.frame = 1;
+          s.frame = 0;
+          s.phase = 1;
           _switchToConditionImg(s, condImg);
-        } else if (s.frame !== 1) {
-          s.frame = 1;
-          _setFrame(s);
+        } else {
+          // 异常图固定正向循环播放
+          if (now - s.lastTime >= _interval(s)) {
+            s.lastTime = now;
+            _nextFrame(s, { forceForward: true });
+            _setFrame(s);
+          }
         }
       } else {
         // 正常模式：出现异常图 → 切换
         if (condImg && condImg !== s.walkImg) {
           s.usingCondition = true;
           s.walkConditionImg = condImg;
-          s.frame = 1;
+          s.frame = 0;
           s.phase = 1;
           _switchToConditionImg(s, condImg);
-        } else if (s.frame !== 1) {
-          s.frame = 1;
+        } else if (s.frame !== s.idle) {
+          s.frame = s.idle;
           _setFrame(s);
         }
       }
@@ -551,7 +624,7 @@ Hooks.on("deleteToken", (doc) => {
 // 角色卡设置变化（updateActor 的 change 含 flag 变更；unsetFlag 为 "-=walkImage" 形式）→ 重建动画
 Hooks.on("updateActor", (actor, change) => {
   const f = change.flags?.D35E;
-  if (f && (f.walkImage !== undefined || f["-=walkImage"] !== undefined || f.walkImageScale !== undefined || f["-=walkImageScale"] !== undefined || f.walkImageOffsetX !== undefined || f.walkImageOffsetY !== undefined || f.walkConditionImg !== undefined || f["-=walkConditionImg"] !== undefined || f.walkConditionCfg !== undefined || f["-=walkConditionCfg"] !== undefined || f.walkHitImg !== undefined || f["-=walkHitImg"] !== undefined)) {
+  if (f && (f.walkImage !== undefined || f["-=walkImage"] !== undefined || f.walkImageScale !== undefined || f["-=walkImageScale"] !== undefined || f.walkImageOffsetX !== undefined || f.walkImageOffsetY !== undefined || f.walkConditionImg !== undefined || f["-=walkConditionImg"] !== undefined || f.walkConditionCfg !== undefined || f["-=walkConditionCfg"] !== undefined || f.walkHitImg !== undefined || f["-=walkHitImg"] !== undefined || f.walkRows !== undefined || f["-=walkRows"] !== undefined || f.walkCols !== undefined || f["-=walkCols"] !== undefined || f.walkIdleFrame !== undefined || f["-=walkIdleFrame"] !== undefined || f.walkLoop !== undefined || f["-=walkLoop"] !== undefined || f.walkInterval !== undefined || f["-=walkInterval"] !== undefined)) {
     canvas.tokens.placeables
       .filter((t) => t.actor === actor || t.actor?.id === actor.id || (t.actor?.isToken && t.actor._actor?.id === actor.id))
       .forEach((t) => {

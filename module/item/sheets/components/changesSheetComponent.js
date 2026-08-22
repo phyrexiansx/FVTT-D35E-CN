@@ -176,7 +176,7 @@ export class ChangesSheetComponent extends ItemSheetComponent {
     // Add new change
     if (a.classList.contains("add-change")) {
       //await this._onSubmit(event);  // Submit any unsaved changes
-      const changes = duplicate(this.sheet.item.system.creationChanges) || [];
+      const changes = duplicate(this.sheet.item.system.creationChanges || []);
       // Combat Changes are
       return this.sheet.item.update({ "system.creationChanges": changes.concat([["", ""]]) });
     }
@@ -198,7 +198,7 @@ export class ChangesSheetComponent extends ItemSheetComponent {
     // Add new change
     if (a.classList.contains("add-change")) {
       //await this._onSubmit(event);  // Submit any unsaved changes
-      const changes = duplicate(this.sheet.item.system.requirements) || [];
+      const changes = duplicate(this.sheet.item.system.requirements || []);
       // Combat Changes are
       return this.sheet.item.update({ "system.requirements": changes.concat([["", "", ""]]) });
     }
@@ -220,7 +220,7 @@ export class ChangesSheetComponent extends ItemSheetComponent {
     // Add new change
     if (a.classList.contains("add-change")) {
       //await this._onSubmit(event);  // Submit any unsaved changes
-      const changes = duplicate(this.sheet.item.system.resistances) || [];
+      const changes = duplicate(this.sheet.item.system.resistances || []);
       // Combat Changes are
       return this.sheet.item.update({ "system.resistances": changes.concat([["", "", false, false, false]]) });
     }
@@ -242,7 +242,7 @@ export class ChangesSheetComponent extends ItemSheetComponent {
     // Add new change
     if (a.classList.contains("add-change")) {
       //await this._onSubmit(event);  // Submit any unsaved changes
-      const changes = duplicate(this.sheet.item.system.damageReduction) || [];
+      const changes = duplicate(this.sheet.item.system.damageReduction || []);
       // Combat Changes are
       return this.sheet.item.update({ "system.damageReduction": changes.concat([["", "", false]]) });
     }
@@ -263,7 +263,7 @@ export class ChangesSheetComponent extends ItemSheetComponent {
 
     // Add new change
     if (a.classList.contains("add-change")) {
-      let _changes = duplicate(this.sheet.item.system.changes) || [];
+      let _changes = duplicate(this.sheet.item.system.changes || []);
       return this.sheet.item.update({ "system.changes": _changes.concat([["", "", "", "", 0]]) });
     }
 

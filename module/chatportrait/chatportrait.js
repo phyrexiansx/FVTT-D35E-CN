@@ -2264,9 +2264,7 @@ const _ChatPortrait = class _ChatPortrait {
       if (imgAvatar && !imgAvatar.includes(CONSTANTS.DEF_TOKEN_IMG_NAME)) {
         return imgAvatar;
       } else {
-        warn(
-          'No specific avatar player image found it for player "' + _ChatPortrait.getUserNameFromChatMessage(message) + '"'
-        );
+        // [§85]没有玩家自定义头像时静默回退默认图（不再刷警告）
         return imgAvatar ? imgAvatar : imgFinal;
       }
     }

@@ -426,7 +426,7 @@ export class ItemUse {
 
     let isHasted =
       (actor?.items || []).filter(
-        (o) => ItemActiveHelper.isActive(o) && (o.name === "Haste" || o.system.changeFlags.hasted)
+        (o) => ItemActiveHelper.isActive(o) && (o.name === "Haste" || o.system?.changeFlags?.hasted)
       ).length > 0;
     if (
       (fullAttack || actor.system.attributes.bab.total < 6) &&
@@ -830,7 +830,7 @@ export class ItemUse {
     };
 
     // Post message
-    if (this.item.data.type === "spell" || getProperty(this.item.system, "isFromSpell")) {
+    if (this.item.type === "spell" || getProperty(this.item.system, "isFromSpell")) {
       if (!game.settings.get("D35E", "hideSpellDescriptionsIfHasAction"))
         await this.item.roll({ rollMode: rollMode }, actor);
     }
@@ -922,8 +922,8 @@ export class ItemUse {
           hasExtraText: extraText.length > 0,
           properties: props,
           hasProperties: props.length > 0,
-          item: this.item.data,
-          actor: actor.data,
+          item: this.item,
+          actor: actor,
           tokenId: token ? `${token.parent.id}.${token.id}` : null,
           hasBoxInfo: hasBoxInfo,
           useAmmoName: useAmmoName,
@@ -1900,7 +1900,7 @@ export class ItemUse {
     let usedItem = replacementItem ? replacementItem : this.item;
     if (!actor.testUserPermission(game.user, "OWNER"))
       return ui.notifications.warn(game.i18n.localize("D35E.ErrorNoActorPermission"));
-    if (this.item.data.type !== "spell") throw new Error("Wrong Item type");
+    if (this.item.type !== "spell") throw new Error("Wrong Item type");
     if (getProperty(this.item.system, "requiresPsionicFocus") && !this.item.actor?.system?.attributes?.psionicFocus)
       return ui.notifications.warn(game.i18n.localize("D35E.RequiresPsionicFocus"));
     if (getProperty(this.item.system, "preparation.mode") !== "atwill" && new ItemCharges(this.item).getCharges() <= 0)

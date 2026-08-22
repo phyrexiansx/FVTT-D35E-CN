@@ -45,7 +45,7 @@ export class ItemRolls {
       hasEffect: this.item.hasEffect,
       isVersatile: this.item.isVersatile,
       hasSave: this.item.hasSave,
-      isSpell: this.item.data.type === "spell",
+      isSpell: this.item.type === "spell",
     };
 
     // Roll spell failure chance
@@ -61,7 +61,7 @@ export class ItemRolls {
     }
 
     // Render the chat card template
-    const templateType = ["consumable"].includes(this.item.data.type) ? this.item.data.type : "item";
+    const templateType = ["consumable"].includes(this.item.type) ? this.item.type : "item";
     const template = `systems/D35E/templates/chat/${templateType}-card.html`;
 
     // Basic chat message data

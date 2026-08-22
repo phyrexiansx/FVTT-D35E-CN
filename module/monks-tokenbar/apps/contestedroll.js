@@ -19,6 +19,7 @@ export class ContestedRollApp extends Application {
         }
 
         this.hidenpcname = (options?.hidenpcname != undefined ? options?.hidenpcname : null) || (game.user.getFlag("D35E", "lastmodeHideNPCName") != undefined ? game.user.getFlag("D35E", "lastmodeHideNPCName") : null) || false;
+        this.autopopup = game.user.getFlag("D35E", "mtbAutoPopup") ?? (options.autopopup || false); // [D35E]memory toggle
         this.flavor = options.flavor;
 
         let available = canvas.tokens.controlled.filter(t => t.actor.type != "group");
@@ -55,6 +56,7 @@ export class ContestedRollApp extends Application {
             rollmode: this.rollmode,
             options: this.requestoptions,
             hidenpcname: this.hidenpcname,
+            autopopup: this.autopopup, // [D35E]
             flavor: this.flavor,
         };
     }
@@ -115,6 +117,7 @@ export class ContestedRollApp extends Application {
                 tokens: msgEntries,
                 canGrab: MonksTokenBar.system.canGrab,
                 showAdvantage: MonksTokenBar.system.showAdvantage,
+                autopopup: this.autopopup, // [D35E]auto popup contested dialog
                 options: this.opts,
                 what: 'contestedroll',
             };
@@ -194,6 +197,11 @@ export class ContestedRollApp extends Application {
 
         $('#contestedroll-hidenpc', html).change($.proxy(function (e) {
             this.hidenpcname = $(e.currentTarget).is(':checked');
+        }, this));
+
+        $('#contestedroll-autopopup', html).change($.proxy(function (e) {
+            this.autopopup = $(e.currentTarget).is(':checked');
+            game.user.setFlag("D35E", "mtbAutoPopup", this.autopopup).catch(() => {}); // [D35E]memory toggle
         }, this));
 
         $('.request-roll', html).change($.proxy(function (e) {
@@ -836,6 +844,24 @@ Hooks.on("renderChatMessage", async (message, html, data) => {
                     r.style.setProperty('--monks-tokenbar-context-top', `${elem.position().top + elem.height()}px`);
                 });
                 $('.item-roll', item).toggle(msgtoken.roll == undefined && (game.user.isGM || (actor.isOwner && rollmode != 'selfroll'))).click($.proxy(ContestedRoll.onRollAbility, this, msgtoken.id, message, null));
+                // [D35E]auto popup contested check (autopopup toggle): player owner online -> player, otherwise GM
+                if (message.getFlag("D35E", "autopopup") && msgtoken.roll == undefined && actor) {
+                    const hasOnlinePlayerOwner = Object.entries(actor.ownership || {})
+                        .some(([k, v]) => v >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER && game.users.get(k) && !game.users.get(k).isGM && game.users.get(k).active);
+                    const toPlayer = !game.user.isGM && actor.isOwner;
+                    const toGM = game.user.isGM && !hasOnlinePlayerOwner;
+                    if ((toPlayer || toGM) && game.user.getFlag("D35E", "autopopupMsg") !== message.id) {
+                        await game.user.setFlag("D35E", "autopopupMsg", message.id);
+                        const reqName = msgtoken.requests?.[0]?.name || msgtoken.request?.name || i18n("MonksTokenBar.ContestedRoll");
+                        new Dialog({
+                            title: reqName,
+                            content: `<p style="margin:0 0 4px;">${reqName}：请进行对抗检定</p>`,
+                            buttons: {
+                                roll: { label: game.i18n.localize("MonksTokenBar.Roll"), callback: () => ContestedRoll.onRollAbility(msgtoken.id, message, null) }
+                            }
+                        }).render(true);
+                    }
+                }
                 $('.dice-total', item).toggle(msgtoken.error === true || (msgtoken.roll != undefined && (game.user.isGM || rollmode == 'roll' || (actor.isOwner && rollmode != 'selfroll'))));
 
                 if (msgtoken.roll != undefined && msgtoken.roll.class.includes("Roll")) {
